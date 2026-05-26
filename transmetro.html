@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLUTIONS-IQ — Transmetro GT · UMG</title>
+<script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+<style>
+:root{
+  --umg-azul:#003087;--umg-azul-mid:#003d99;--umg-azul-dark:#00205c;
+  --umg-rojo:#cc0000;--umg-rojo-dark:#990000;
+  --umg-dorado:#c9a84c;--umg-dorado-lt:#f0d080;
+  --bg:#eef2f8;--surface:#fff;--surface2:#f5f8fc;--border:#d0d9ea;
+  --text:#0d1b2a;--text-muted:#4a5e78;
+  --success:#155724;--success-bg:#d4edda;
+  --danger:#721c24;--danger-bg:#f8d7da;
+  --warn:#856404;--warn-bg:#fff3cd;
+  --info:#003087;--info-bg:#cce0ff;
+  --sidebar-w:240px;--header-h:58px;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 4px rgba(0,0,50,.09);--shadow-md:0 4px 18px rgba(0,0,50,.13);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+button{font-family:inherit;cursor:pointer;}input,select,textarea{font-family:inherit;}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:linear-gradient(160deg,var(--umg-azul-dark) 0%,var(--umg-azul) 55%,var(--umg-azul-mid) 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+.login-wrap{display:flex;align-items:stretch;border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45);max-width:820px;width:100%;}
+.login-left{background:linear-gradient(180deg,var(--umg-rojo-dark) 0%,var(--umg-rojo) 100%);width:300px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;gap:18px;}
+.login-left img{width:130px;height:130px;border-radius:50%;border:4px solid var(--umg-dorado);object-fit:cover;box-shadow:0 4px 20px rgba(0,0,0,.35);}
+.login-uni{color:#fff;font-size:17px;font-weight:800;text-align:center;line-height:1.25;}
+.login-fac{color:rgba(255,255,255,.8);font-size:11px;text-align:center;line-height:1.4;}
+.login-divider{width:56px;height:2px;background:var(--umg-dorado);border-radius:2px;}
+.login-right{background:#fff;flex:1;padding:42px 38px;display:flex;flex-direction:column;justify-content:center;}
+.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.login-brand-icon{width:36px;height:36px;background:var(--umg-azul);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:19px;}
+.login-brand-name{font-size:18px;font-weight:800;color:var(--umg-azul);}
+.login-brand-sub{font-size:11px;color:var(--text-muted);}
+.login-h{font-size:21px;font-weight:800;color:var(--umg-azul);margin-bottom:4px;}
+.login-sh{font-size:13px;color:var(--text-muted);margin-bottom:22px;}
+.lfg{display:flex;flex-direction:column;gap:4px;margin-bottom:13px;}
+.lfg label{font-size:11px;font-weight:700;color:var(--umg-azul);text-transform:uppercase;letter-spacing:.5px;}
+.linp{padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);outline:none;width:100%;transition:border-color .15s;}
+.linp:focus{border-color:var(--umg-azul);}
+.lbtn{width:100%;padding:11px;background:var(--umg-rojo);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;margin-top:6px;transition:background .15s;}
+.lbtn:hover{background:var(--umg-rojo-dark);}
+.lerr{background:var(--danger-bg);color:var(--danger);border:1px solid #f5c6cb;border-radius:6px;padding:9px 12px;font-size:13px;margin-top:10px;display:none;}
+.lerr.show{display:block;}
+.lhint{margin-top:16px;background:var(--info-bg);border:1px solid #99c0ff;border-radius:8px;padding:12px 14px;font-size:12px;color:var(--umg-azul);}
+.lhint strong{display:block;margin-bottom:5px;font-size:13px;}
+.lhint table{width:100%;border-collapse:collapse;}
+.lhint td{padding:2px 5px;}
+
+/* LAYOUT */
+#app{display:none;flex-direction:column;min-height:100vh;}
+#app.visible{display:flex;}
+header{height:var(--header-h);background:linear-gradient(90deg,var(--umg-azul-dark) 0%,var(--umg-azul) 100%);border-bottom:3px solid var(--umg-rojo);display:flex;align-items:center;padding:0 18px;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,80,.25);flex-shrink:0;}
+.hdr-logo{display:flex;align-items:center;gap:10px;color:#fff;font-size:15px;font-weight:800;}
+.hdr-bus{width:28px;height:28px;background:var(--umg-rojo);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.hdr-umg{width:32px;height:32px;border-radius:50%;border:2px solid var(--umg-dorado);object-fit:cover;flex-shrink:0;}
+.hdr-sep{width:1px;height:26px;background:rgba(255,255,255,.2);margin:0 3px;}
+.hdr-user{margin-left:auto;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:8px;padding:5px 11px;}
+.hdr-uname{color:#fff;font-size:13px;font-weight:600;}
+.hdr-role{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;}
+.r-admin{background:#c9a84c33;color:var(--umg-dorado-lt);}
+.r-supervisor{background:#00cc5533;color:#5fffaa;}
+.r-despachador{background:#3399ff33;color:#99ccff;}
+.r-piloto{background:#aa44ff33;color:#ddaaff;}
+#hdr-ab{position:relative;background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:8px;font-size:17px;display:flex;align-items:center;justify-content:center;}
+#hdr-ab:hover{background:rgba(255,255,255,.2);}
+.adot{position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--umg-rojo);border-radius:50%;border:2px solid var(--umg-azul-dark);display:none;}
+.adot.show{display:block;}
+#logout-btn{background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.8);font-size:12px;font-weight:600;padding:6px 11px;border-radius:6px;}
+#logout-btn:hover{background:var(--umg-rojo);color:#fff;}
+
+.app-body{display:flex;flex:1;min-height:0;}
+aside{width:var(--sidebar-w);background:linear-gradient(180deg,var(--umg-azul-dark) 0%,var(--umg-azul) 100%);display:flex;flex-direction:column;position:sticky;top:var(--header-h);height:calc(100vh - var(--header-h));overflow-y:auto;padding:10px 0 20px;flex-shrink:0;border-right:2px solid var(--umg-rojo);}
+.nav-sect{font-size:10px;font-weight:700;letter-spacing:1.2px;color:rgba(255,255,255,.35);padding:14px 16px 5px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;color:rgba(255,255,255,.65);font-size:13px;border-left:3px solid transparent;transition:all .13s;user-select:none;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;border-left-color:var(--umg-dorado);}
+.nav-item.hidden{display:none;}
+.ni{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.nc{margin-left:auto;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;padding:1px 6px;border-radius:9px;min-width:20px;text-align:center;}
+.nd{width:7px;height:7px;background:var(--umg-rojo);border-radius:50%;margin-left:auto;display:none;}
+.nd.show{display:block;}
+
+main{flex:1;padding:22px 26px;overflow-y:auto;}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.page-title{font-size:20px;font-weight:800;color:var(--umg-azul);}
+.page-subtitle{font-size:13px;color:var(--text-muted);margin-top:3px;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius);font-size:13px;font-weight:600;border:none;transition:all .13s;white-space:nowrap;}
+.btn-primary{background:var(--umg-azul);color:#fff;}.btn-primary:hover{background:var(--umg-azul-dark);}
+.btn-accent{background:var(--umg-rojo);color:#fff;}.btn-accent:hover{background:var(--umg-rojo-dark);}
+.btn-success{background:var(--success-bg);color:var(--success);border:1px solid #c3e6cb;}.btn-success:hover{background:var(--success);color:#fff;}
+.btn-sm{padding:4px 10px;font-size:12px;}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid #f5c6cb;}.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border);}.btn-ghost:hover{background:var(--bg);color:var(--text);}
+.btn-warn{background:var(--warn-bg);color:var(--warn);border:1px solid #ffc107;}.btn-warn:hover{background:var(--warn);color:#fff;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--umg-azul);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow);}
+.stat-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:3px;}
+.stat-label{font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.stat-value{font-size:23px;font-weight:800;color:var(--umg-azul);}
+
+.table-wrapper{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow);}
+.table-toolbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:2px solid var(--umg-rojo);background:var(--umg-azul);}
+.table-toolbar .sinp{flex:1;padding:7px 11px;border:1px solid rgba(255,255,255,.3);border-radius:6px;font-size:13px;background:rgba(255,255,255,.15);color:#fff;outline:none;max-width:280px;}
+.table-toolbar .sinp::placeholder{color:rgba(255,255,255,.6);}
+.table-toolbar .sinp:focus{background:rgba(255,255,255,.25);}
+.table-toolbar .fctl{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;}
+.table-toolbar .fctl option{background:var(--umg-azul);color:#fff;}
+table{width:100%;border-collapse:collapse;}
+thead{background:#f0f4ff;}
+th{text-align:left;padding:9px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--umg-azul);border-bottom:2px solid var(--border);}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}tr:hover td{background:#f5f8ff;}
+.ac{display:flex;gap:5px;}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.bg-blue{background:var(--info-bg);color:var(--umg-azul);}
+.bg-green{background:var(--success-bg);color:var(--success);}
+.bg-amber{background:var(--warn-bg);color:var(--warn);}
+.bg-red{background:var(--danger-bg);color:var(--danger);}
+.bg-gray{background:#f1f5f9;color:#475569;}
+.bg-purple{background:#f3e8ff;color:#6b21a8;}
+.bg-teal{background:#f0fdfa;color:#134e4a;}
+.l1{background:#fef9c3;color:#713f12;font-weight:700;}.l2{background:#dcfce7;color:#14532d;font-weight:700;}.l5{background:#d1fae5;color:#064e3b;font-weight:700;}.l6{background:#fee2e2;color:#7f1d1d;font-weight:700;}.l7{background:#ede9fe;color:#4c1d95;font-weight:700;}.l12{background:#dbeafe;color:#1e3a8a;font-weight:700;}.l13{background:#fce7f3;color:#831843;font-weight:700;}.l17{background:#f0fdf4;color:#14532d;font-weight:700;}.l18{background:#fff7ed;color:#7c2d12;font-weight:700;}.l21{background:#fdf4ff;color:#701a75;font-weight:700;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius-lg);width:100%;max-width:540px;box-shadow:var(--shadow-md);display:flex;flex-direction:column;max-height:90vh;animation:mIn .18s ease;border-top:4px solid var(--umg-rojo);}
+@keyframes mIn{from{opacity:0;transform:scale(.95) translateY(-8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border);background:var(--umg-azul);flex-shrink:0;}
+.modal-title{font-size:15px;font-weight:700;color:#fff;}
+.modal-close{width:27px;height:27px;border-radius:6px;border:none;background:rgba(255,255,255,.15);font-size:17px;color:#fff;display:flex;align-items:center;justify-content:center;}
+.modal-close:hover{background:rgba(255,255,255,.3);}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
+.fg{display:flex;flex-direction:column;gap:4px;}.fg label{font-size:11px;font-weight:700;color:var(--umg-azul);text-transform:uppercase;letter-spacing:.4px;}
+.fc{padding:8px 11px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--surface);outline:none;font-family:inherit;transition:border-color .14s;}
+.fc:focus{border-color:var(--umg-azul);}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+#toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;z-index:999;display:none;align-items:center;gap:8px;box-shadow:var(--shadow-md);}
+@keyframes tIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+#toast.success{background:var(--success-bg);color:var(--success);border:1px solid #c3e6cb;display:flex;animation:tIn .2s;}
+#toast.error{background:var(--danger-bg);color:var(--danger);border:1px solid #f5c6cb;display:flex;animation:tIn .2s;}
+#toast.warn{background:var(--warn-bg);color:var(--warn);border:1px solid #ffc107;display:flex;animation:tIn .2s;}
+
+.empty{text-align:center;padding:38px 24px;color:var(--text-muted);}
+.empty-icon{font-size:32px;margin-bottom:9px;}.empty-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.acard{border-radius:var(--radius);padding:11px 14px;font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;border-left:4px solid;}
+.acard.alta{background:#fff5f5;border-color:var(--umg-rojo);color:#721c24;}
+.acard.media{background:var(--warn-bg);border-color:#ffc107;color:var(--warn);}
+.acard.ok{background:var(--success-bg);border-color:#28a745;color:var(--success);}
+.atime{font-size:11px;opacity:.7;margin-top:2px;}
+.page{display:none;}.page.active{display:block;}
+.fw7{font-weight:700;}.tsm{font-size:12px;color:var(--text-muted);}
+.sc{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--umg-rojo);border-radius:var(--radius-lg);padding:15px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
+.sc-title{font-size:14px;font-weight:700;margin-bottom:11px;color:var(--umg-azul);display:flex;align-items:center;gap:8px;}
+.inote{background:var(--info-bg);border:1px solid #99c0ff;border-radius:6px;padding:9px 12px;font-size:12px;color:var(--umg-azul);}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-left">
+      <img src="data:image/jpeg;base64,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" alt="Logo UMG">
+      <div class="login-uni">Universidad Mariano Gálvez de Guatemala</div>
+      <div class="login-divider" style="width:56px;height:2px;background:#c9a84c;border-radius:2px;"></div>
+      <div class="login-fac" style="color:rgba(255,255,255,.8);font-size:11px;text-align:center;line-height:1.4;">Facultad de Ingeniería en Sistemas de Información y Ciencias de la Computación</div>
+    </div>
+    <div class="login-right">
+      <div class="login-brand" style="display:flex;align-items:center;gap:10px;margin-bottom:22px;">
+        <div class="login-brand-icon" style="width:36px;height:36px;background:var(--umg-azul);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:19px;">🚌</div>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--umg-azul);">SOLUTIONS-IQ</div>
+          <div style="font-size:11px;color:var(--text-muted);">Sistema de Control · Transmetro GT</div>
+        </div>
+      </div>
+      <div style="font-size:21px;font-weight:800;color:var(--umg-azul);margin-bottom:4px;">Iniciar Sesión</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:22px;">Ingresa tus credenciales para acceder al sistema.</div>
+      <div class="lfg"><label style="font-size:11px;font-weight:700;color:var(--umg-azul);text-transform:uppercase;letter-spacing:.5px;">Usuario</label>
+        <input class="linp" id="li-user" type="text" placeholder="usuario" autocomplete="off" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);outline:none;width:100%;"></div>
+      <div class="lfg"><label style="font-size:11px;font-weight:700;color:var(--umg-azul);text-transform:uppercase;letter-spacing:.5px;">Contraseña</label>
+        <input class="linp" id="li-pass" type="password" placeholder="••••••••" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);outline:none;width:100%;"></div>
+      <button onclick="doLogin()" style="width:100%;padding:11px;background:var(--umg-rojo);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;margin-top:6px;">Entrar al Sistema</button>
+      <div id="login-err" style="background:var(--danger-bg);color:var(--danger);border:1px solid #f5c6cb;border-radius:6px;padding:9px 12px;font-size:13px;margin-top:10px;display:none;"></div>
+      <div style="margin-top:16px;background:var(--info-bg);border:1px solid #99c0ff;border-radius:8px;padding:12px 14px;font-size:12px;color:var(--umg-azul);">
+        <strong style="display:block;margin-bottom:5px;font-size:13px;">🔑 Usuarios de prueba:</strong>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td><b>admin</b></td><td>admin123</td><td style="color:#003087;font-weight:700;">Administrador</td></tr>
+          <tr><td><b>supervisor1</b></td><td>sup123</td><td style="color:#155724;font-weight:700;">Supervisor</td></tr>
+          <tr><td><b>despachador1</b></td><td>des123</td><td style="color:#003087;font-weight:700;">Despachador</td></tr>
+          <tr><td><b>piloto1</b></td><td>pil123</td><td style="color:#6b21a8;font-weight:700;">Piloto</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="hdr-logo">
+      <div class="hdr-bus">🚌</div>
+      SOLUTIONS-IQ
+    </div>
+    <div class="hdr-sep"></div>
+    <img id="hdr-umg-logo" src="data:image/jpeg;base64,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" class="hdr-umg" alt="UMG">
+    <span style="color:rgba(255,255,255,.5);font-size:11px;">UMG · Transmetro GT</span>
+    <button id="hdr-ab" onclick="navigate('alertas')" title="Alertas">🔔<span class="adot" id="adot"></span></button>
+    <div class="hdr-user">
+      <span class="hdr-uname" id="hdr-uname">—</span>
+      <span class="hdr-role" id="hdr-role">—</span>
+    </div>
+    <button id="logout-btn" onclick="doLogout()">Cerrar sesión</button>
+  </header>
+  <div class="app-body">
+    <aside>
+      <div class="nav-sect">General</div>
+      <div class="nav-item active" onclick="navigate('dashboard')" id="nav-dashboard"><span class="ni">📊</span>Dashboard</div>
+      <div class="nav-sect">Operaciones</div>
+      <div class="nav-item" onclick="navigate('lineas')" id="nav-lineas"><span class="ni">🛤️</span>Líneas<span class="nc" id="cnt-lineas">0</span></div>
+      <div class="nav-item" onclick="navigate('estaciones')" id="nav-estaciones"><span class="ni">🏢</span>Estaciones<span class="nc" id="cnt-estaciones">0</span></div>
+      <div class="nav-item" onclick="navigate('buses')" id="nav-buses"><span class="ni">🚌</span>Buses<span class="nc" id="cnt-buses">0</span></div>
+      <div class="nav-item" onclick="navigate('pilotos')" id="nav-pilotos"><span class="ni">👤</span>Pilotos<span class="nc" id="cnt-pilotos">0</span></div>
+      <div class="nav-item" onclick="navigate('asignaciones')" id="nav-asignaciones"><span class="ni">📋</span>Asignaciones<span class="nc" id="cnt-asignaciones">0</span></div>
+      <div class="nav-sect">Control</div>
+      <div class="nav-item" onclick="navigate('desvios')" id="nav-desvios"><span class="ni">🔀</span>Desvíos<span class="nc" id="cnt-desvios">0</span></div>
+      <div class="nav-item" onclick="navigate('ausencias')" id="nav-ausencias"><span class="ni">🚫</span>Ausencias<span class="nd" id="dot-ausencias"></span></div>
+      <div class="nav-item" onclick="navigate('incidencias')" id="nav-incidencias"><span class="ni">⚠️</span>Incidencias<span class="nd" id="dot-incidencias"></span></div>
+      <div class="nav-item" onclick="navigate('alertas')" id="nav-alertas"><span class="ni">🔔</span>Alertas<span class="nd" id="dot-alertas"></span></div>
+      <div class="nav-sect">Reportes</div>
+      <div class="nav-item" onclick="navigate('reportes')" id="nav-reportes"><span class="ni">📄</span>Reportes TXT</div>
+      <div class="nav-sect">Administración</div>
+      <div class="nav-item" onclick="navigate('usuarios')" id="nav-usuarios"><span class="ni">🔐</span>Usuarios<span class="nc" id="cnt-usuarios">0</span></div>
+      <div class="nav-item" onclick="navigate('municipalidades')" id="nav-municipalidades"><span class="ni">🏛️</span>Municipalidades<span class="nc" id="cnt-municipalidades">0</span></div>
+      <div class="nav-item" onclick="navigate('parqueos')" id="nav-parqueos"><span class="ni">🅿️</span>Parqueos<span class="nc" id="cnt-parqueos">0</span></div>
+    </aside>
+    <main>
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-subtitle">Resumen operativo del sistema Transmetro · Ciudad de Guatemala</div></div></div>
+        <div class="stats-grid" id="dash-stats"></div>
+        <div id="dash-alerts-sec"></div>
+        <div class="stats-grid" id="dash-bottom"></div>
+      </div>
+      <!-- LÍNEAS -->
+      <div class="page" id="page-lineas">
+        <div class="page-header"><div><div class="page-title">Líneas del Transmetro</div><div class="page-subtitle">L1, L2, L5, L6, L7, L12, L13, L17, L18, L21 — Ciudad de Guatemala (REQ-0006, REQ-0007)</div></div><div id="btn-lineas"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar línea..." oninput="renderLineas(this.value)"></div>
+        <table><thead><tr><th>Línea</th><th>Nombre</th><th>Origen</th><th>Destino</th><th>Zonas</th><th>Km</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbody-lineas"></tbody></table>
+        <div id="empty-lineas" class="empty" style="display:none;"><div class="empty-icon">🛤️</div><div class="empty-title">Sin líneas</div></div></div>
+      </div>
+      <!-- ESTACIONES -->
+      <div class="page" id="page-estaciones">
+        <div class="page-header"><div><div class="page-title">Estaciones</div><div class="page-subtitle">Puntos de abordaje del sistema</div></div><div id="btn-estaciones"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar estación..." oninput="renderEstaciones(this.value)"></div>
+        <table><thead><tr><th>Nombre</th><th>Zona</th><th>Municipalidad</th><th>Líneas</th><th>Accesos</th><th>Guardias</th><th>Transbordo</th><th>Parqueo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbody-estaciones"></tbody></table>
+        <div id="empty-estaciones" class="empty" style="display:none;"><div class="empty-icon">🏢</div><div class="empty-title">Sin estaciones</div></div></div>
+      </div>
+      <!-- BUSES -->
+      <div class="page" id="page-buses">
+        <div class="page-header"><div><div class="page-title">Flota de Buses</div><div class="page-subtitle">Articulados, bi-articulados, convencionales y eléctricos (REQ-0015, REQ-0016, REQ-0017)</div></div><div id="btn-buses"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar bus..." oninput="renderBuses(this.value)"></div>
+        <table><thead><tr><th>Placa</th><th>Tipo</th><th>Línea Asignada</th><th>Cap.Max</th><th>Pasajeros</th><th>Estado</th><th>Parqueo</th><th>Acciones</th></tr></thead><tbody id="tbody-buses"></tbody></table>
+        <div id="empty-buses" class="empty" style="display:none;"><div class="empty-icon">🚌</div><div class="empty-title">Sin buses</div></div></div>
+      </div>
+      <!-- PILOTOS -->
+      <div class="page" id="page-pilotos">
+        <div class="page-header"><div><div class="page-title">Pilotos</div><div class="page-subtitle">Registro de conductores (REQ-0019, REQ-0020)</div></div><div id="btn-pilotos"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar piloto..." oninput="renderPilotos(this.value)"></div>
+        <table><thead><tr><th>Nombre</th><th>DPI</th><th>Licencia</th><th>Turno</th><th>Educación</th><th>Bus</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbody-pilotos"></tbody></table>
+        <div id="empty-pilotos" class="empty" style="display:none;"><div class="empty-icon">👤</div><div class="empty-title">Sin pilotos</div></div></div>
+      </div>
+      <!-- ASIGNACIONES -->
+      <div class="page" id="page-asignaciones">
+        <div class="page-header"><div><div class="page-title">Asignaciones por Turno</div><div class="page-subtitle">REQ-0021, REQ-0023, REQ-0024 · Un piloto, una línea por turno</div></div><div id="btn-asignaciones"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar">
+          <input class="sinp" placeholder="🔍 Buscar..." oninput="renderAsignaciones(this.value)">
+          <select id="ftturno" class="fctl" onchange="renderAsignaciones()"><option value="">Todos los turnos</option><option value="mañana">Mañana</option><option value="tarde">Tarde</option><option value="noche">Noche</option></select>
+        </div>
+        <table><thead><tr><th>Fecha</th><th>Turno</th><th>Línea</th><th>Bus</th><th>Piloto</th><th>Creado por</th><th>Estado</th><th>Historial</th><th>Acciones</th></tr></thead><tbody id="tbody-asignaciones"></tbody></table>
+        <div id="empty-asignaciones" class="empty" style="display:none;"><div class="empty-icon">📋</div><div class="empty-title">Sin asignaciones</div></div></div>
+      </div>
+      <!-- DESVÍOS -->
+      <div class="page" id="page-desvios">
+        <div class="page-header"><div><div class="page-title">Desvíos y Suspensiones</div><div class="page-subtitle">REQ-0008, REQ-0010 · Registro formal de desvíos temporales y suspensiones</div></div><div id="btn-desvios"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar">
+          <input class="sinp" placeholder="🔍 Buscar desvío..." oninput="renderDesvios(this.value)">
+          <select id="ft-dest-estado" class="fctl" onchange="renderDesvios()"><option value="">Todos</option><option value="activo">Activos</option><option value="finalizado">Finalizados</option></select>
+        </div>
+        <table><thead><tr><th>Línea</th><th>Motivo</th><th>Estaciones Afectadas</th><th>Hora Inicio</th><th>Duración Est.</th><th>Registrado por</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbody-desvios"></tbody></table>
+        <div id="empty-desvios" class="empty" style="display:none;"><div class="empty-icon">🔀</div><div class="empty-title">Sin desvíos registrados</div></div></div>
+      </div>
+      <!-- AUSENCIAS -->
+      <div class="page" id="page-ausencias">
+        <div class="page-header"><div><div class="page-title">Ausencias de Pilotos</div><div class="page-subtitle">REQ-0022 · Registro de ausencias con alerta automática para reemplazo</div></div><div id="btn-ausencias"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar piloto..." oninput="renderAusencias(this.value)"></div>
+        <table><thead><tr><th>Fecha</th><th>Piloto</th><th>Turno</th><th>Motivo</th><th>Línea Afectada</th><th>Reemplazo</th><th>Registrado por</th><th>Acciones</th></tr></thead><tbody id="tbody-ausencias"></tbody></table>
+        <div id="empty-ausencias" class="empty" style="display:none;"><div class="empty-icon">🚫</div><div class="empty-title">Sin ausencias registradas</div></div></div>
+      </div>
+      <!-- INCIDENCIAS -->
+      <div class="page" id="page-incidencias">
+        <div class="page-header"><div><div class="page-title">Incidencias</div><div class="page-subtitle">REQ-0025, REQ-0026 · Registro y cierre formal de incidencias</div></div><div id="btn-incidencias"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar">
+          <input class="sinp" placeholder="🔍 Buscar incidencia..." oninput="renderIncidencias(this.value)">
+          <select id="ft-inc-est" class="fctl" onchange="renderIncidencias()"><option value="">Todas</option><option value="activa">Activas</option><option value="cerrada">Cerradas</option></select>
+        </div>
+        <table><thead><tr><th>Hora</th><th>Tipo</th><th>Línea</th><th>Estación</th><th>Severidad</th><th>Descripción</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbody-incidencias"></tbody></table>
+        <div id="empty-incidencias" class="empty" style="display:none;"><div class="empty-icon">⚠️</div><div class="empty-title">Sin incidencias</div></div></div>
+      </div>
+      <!-- ALERTAS -->
+      <div class="page" id="page-alertas">
+        <div class="page-header"><div><div class="page-title">Panel de Alertas</div><div class="page-subtitle">REQ-0031, REQ-0032 · Alertas automáticas del sistema con historial</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="marcarTodas()">✔ Marcar todas atendidas</button></div>
+        <div id="alertas-list"></div>
+      </div>
+      <!-- USUARIOS -->
+      <div class="page" id="page-usuarios">
+        <div class="page-header"><div><div class="page-title">Gestión de Usuarios</div><div class="page-subtitle">REQ-0001, REQ-0002, REQ-0004 · Control de acceso por roles</div></div><div id="btn-usuarios"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar usuario..." oninput="renderUsuarios(this.value)"></div>
+        <table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Intentos</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead><tbody id="tbody-usuarios"></tbody></table>
+        <div id="empty-usuarios" class="empty" style="display:none;"><div class="empty-icon">🔐</div><div class="empty-title">Sin usuarios</div></div></div>
+      </div>
+      <!-- MUNICIPALIDADES -->
+      <div class="page" id="page-municipalidades">
+        <div class="page-header"><div><div class="page-title">Municipalidades</div></div><div id="btn-municipalidades"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar..." oninput="renderMunicipalidades(this.value)"></div>
+        <table><thead><tr><th>Nombre</th><th>Departamento</th><th>Zonas</th><th>Acciones</th></tr></thead><tbody id="tbody-municipalidades"></tbody></table>
+        <div id="empty-municipalidades" class="empty" style="display:none;"><div class="empty-icon">🏛️</div><div class="empty-title">Sin municipalidades</div></div></div>
+      </div>
+      <!-- PARQUEOS -->
+      <div class="page" id="page-parqueos">
+        <div class="page-header"><div><div class="page-title">Parqueos</div></div><div id="btn-parqueos"></div></div>
+        <div class="table-wrapper"><div class="table-toolbar"><input class="sinp" placeholder="🔍 Buscar parqueo..." oninput="renderParqueos(this.value)"></div>
+        <table><thead><tr><th>Nombre</th><th>Ubicación</th><th>Capacidad</th><th>Acciones</th></tr></thead><tbody id="tbody-parqueos"></tbody></table>
+        <div id="empty-parqueos" class="empty" style="display:none;"><div class="empty-icon">🅿️</div><div class="empty-title">Sin parqueos</div></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+<!-- REPORTES -->
+      <div class="page" id="page-reportes">
+        <div class="page-header"><div><div class="page-title">Generador de Reportes</div><div class="page-subtitle">Exporta reportes detallados en .txt para presentaciones, charlas y análisis de mejoras</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px;">
+          <div class="sc"><div class="sc-title">📋 Reporte Completo del Sistema</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Todas las líneas, estaciones, buses, pilotos, asignaciones, incidencias, desvíos y recomendaciones de mejora.</p><button class="btn btn-accent" style="width:100%;" onclick="generarReporte('completo')">⬇ Descargar Reporte Completo .txt</button></div>
+          <div class="sc"><div class="sc-title">🚌 Reporte Operativo Diario</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Asignaciones activas, buses en ruta, incidencias del turno y alertas pendientes del día.</p><button class="btn btn-primary" style="width:100%;" onclick="generarReporte('operativo')">⬇ Descargar Reporte Operativo .txt</button></div>
+          <div class="sc"><div class="sc-title">⚠️ Reporte de Incidencias y Desvíos</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Historial completo, análisis por línea y recomendaciones para reducir incidencias.</p><button class="btn btn-warn" style="width:100%;" onclick="generarReporte('incidencias')">⬇ Descargar Reporte de Incidencias .txt</button></div>
+          <div class="sc"><div class="sc-title">👤 Reporte de Pilotos y Asignaciones</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Registro completo de pilotos, turnos, historial de asignaciones y ausencias registradas.</p><button class="btn btn-success" style="width:100%;" onclick="generarReporte('pilotos')">⬇ Descargar Reporte de Pilotos .txt</button></div>
+          <div class="sc"><div class="sc-title">🚍 Reporte de Flota de Buses</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Estado de cada unidad, ocupación, mantenimientos y análisis de capacidad del sistema.</p><button class="btn btn-ghost" style="width:100%;" onclick="generarReporte('flota')">⬇ Descargar Reporte de Flota .txt</button></div>
+          <div class="sc"><div class="sc-title">🔔 Reporte de Alertas y KPIs</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Historial de alertas, tiempos de respuesta, tasa de atención y métricas operativas clave.</p><button class="btn btn-danger" style="width:100%;" onclick="generarReporte('alertas')">⬇ Descargar Reporte de Alertas .txt</button></div>
+        </div>
+        <div class="sc"><div class="sc-title">👁 Vista Previa del Reporte</div><pre id="reporte-preview" style="background:#0d1b2a;color:#e2e8f0;padding:18px;border-radius:8px;font-size:12px;line-height:1.6;max-height:420px;overflow-y:auto;white-space:pre-wrap;font-family:'Courier New',monospace;">Selecciona un tipo de reporte arriba para ver la vista previa aquí...</pre></div>
+      </div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeMO(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header"><div class="modal-title" id="modal-title">Formulario</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRecord()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// DATABASE (IndexedDB via Dexie)
+// ============================================================
+const db = new Dexie('SolIQ_v7');
+db.version(2).stores({
+  usuarios:'++id,username,rol,activo',
+  municipalidades:'++id,nombre',
+  parqueos:'++id,nombre',
+  lineas:'++id,numero,nombre,estado,municipalidadId',
+  estaciones:'++id,nombre,zona,municipalidadId,estadoOperativo',
+  buses:'++id,placa,lineaId,parqueoId,estadoBus',
+  pilotos:'++id,nombre,dpi,busId,estadoLaboral,turno',
+  asignaciones:'++id,lineaId,busId,pilotoId,turno,fecha,estado',
+  cambiosTurno:'++id,asignacionId,tipo,motivo,hora',
+  desvios:'++id,lineaId,motivo,estado,horaInicio',
+  ausencias:'++id,pilotoId,fecha,turno,motivo,lineaId',
+  incidencias:'++id,tipo,lineaId,estacionId,severidad,estado,horaInicio',
+  alertas:'++id,tipo,nivel,modulo,hora,atendida'
+});
+
+// ============================================================
+// AUTH (REQ-0001)
+// ============================================================
+let CU=null,loginAttempts={};
+async function doLogin(){
+  const u=document.getElementById('li-user').value.trim();
+  const p=document.getElementById('li-pass').value.trim();
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  const lk='lock_'+u;
+  const lt=parseInt(localStorage.getItem(lk)||'0');
+  if(lt&&Date.now()<lt){const m=Math.ceil((lt-Date.now())/60000);err.textContent='Cuenta bloqueada. Intenta en '+m+' min. (REQ-0001)';err.style.display='block';return;}
+  const found=await db.usuarios.where('username').equals(u).first();
+  if(!found||found.password!==p){
+    loginAttempts[u]=(loginAttempts[u]||0)+1;
+    if(loginAttempts[u]>=3){localStorage.setItem(lk,Date.now()+900000);err.textContent='Cuenta bloqueada 15 min tras 3 intentos fallidos. (REQ-0001)';loginAttempts[u]=0;}
+    else err.textContent='Usuario o contraseña incorrectos. Intento '+loginAttempts[u]+'/3.';
+    err.style.display='block';return;
+  }
+  if(!found.activo){err.textContent='Cuenta desactivada. Contacta al administrador.';err.style.display='block';return;}
+  loginAttempts[u]=0;localStorage.removeItem(lk);CU=found;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').classList.add('visible');
+  applyRoleUI();await updateCounts();await renderDashboard();
+  toast('Bienvenido, '+found.nombre);
+}
+function doLogout(){CU=null;document.getElementById('login-screen').style.display='flex';document.getElementById('app').classList.remove('visible');document.getElementById('li-user').value='';document.getElementById('li-pass').value='';}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('login-screen').style.display!=='none')doLogin();});
+
+// ============================================================
+// ROLES (REQ-0002)
+// ============================================================
+const RL={admin:'Administrador General',supervisor:'Supervisor de Rutas',despachador:'Despachador',piloto:'Piloto'};
+const RC={admin:'r-admin',supervisor:'r-supervisor',despachador:'r-despachador',piloto:'r-piloto'};
+const PERMS={
+  admin:{pages:['dashboard','lineas','estaciones','buses','pilotos','asignaciones','desvios','ausencias','incidencias','alertas','usuarios','municipalidades','parqueos','reportes']},
+  supervisor:{pages:['dashboard','lineas','estaciones','buses','pilotos','asignaciones','desvios','ausencias','incidencias','alertas','reportes']},
+  despachador:{pages:['dashboard','buses','pilotos','asignaciones','ausencias','alertas','reportes']},
+  piloto:{pages:['dashboard','alertas']},reportes_nav:true
+};
+function applyRoleUI(){
+  const r=CU.rol;
+  document.getElementById('hdr-uname').textContent=CU.nombre;
+  const rb=document.getElementById('hdr-role');rb.textContent=RL[r]||r;rb.className='hdr-role '+(RC[r]||'');
+  const perms=PERMS[r]||PERMS.piloto;
+  ['lineas','estaciones','buses','pilotos','asignaciones','desvios','ausencias','incidencias','alertas','usuarios','municipalidades','parqueos'].forEach(p=>{
+    const el=document.getElementById('nav-'+p);if(el)el.classList.toggle('hidden',!perms.pages.includes(p));
+  });
+  buildBtns(r);
+}
+function buildBtns(r){
+  const defs={lineas:{l:'+ Nueva Línea',t:'linea'},estaciones:{l:'+ Nueva Estación',t:'estacion'},buses:{l:'+ Nuevo Bus',t:'bus'},pilotos:{l:'+ Nuevo Piloto',t:'piloto'},asignaciones:{l:'+ Nueva Asignación',t:'asignacion'},desvios:{l:'+ Registrar Desvío',t:'desvio'},ausencias:{l:'+ Registrar Ausencia',t:'ausencia'},incidencias:{l:'+ Registrar Incidencia',t:'incidencia'},usuarios:{l:'+ Nuevo Usuario',t:'usuario'},municipalidades:{l:'+ Nueva Municipalidad',t:'municipalidad'},parqueos:{l:'+ Nuevo Parqueo',t:'parqueo'}};
+  const cc={admin:Object.keys(defs),supervisor:['desvios','incidencias'],despachador:['buses','asignaciones','ausencias'],piloto:[]};
+  const can=cc[r]||[];
+  Object.entries(defs).forEach(([p,c])=>{
+    const el=document.getElementById('btn-'+p);if(!el)return;
+    el.innerHTML=(r==='admin'||can.includes(p))?`<button class="btn btn-accent" onclick="openModal('${c.t}')">${c.l}</button>`:'';
+  });
+}
+// ============================================================
+// NAV
+// ============================================================
+function navigate(pg){
+  const perms=PERMS[CU?.rol]||PERMS.piloto;
+  if(!perms.pages.includes(pg)&&pg!=='dashboard'){toast('Sin permiso para esta sección.','error');return;}
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const pe=document.getElementById('page-'+pg);if(pe)pe.classList.add('active');
+  const ne=document.getElementById('nav-'+pg);if(ne)ne.classList.add('active');
+  renderPage(pg);
+}
+function getCP(){const a=document.querySelector('.page.active');return a?a.id.replace('page-',''):'dashboard';}
+function renderPage(p){
+  const m={dashboard:renderDashboard,lineas:renderLineas,estaciones:renderEstaciones,buses:renderBuses,pilotos:renderPilotos,asignaciones:renderAsignaciones,desvios:renderDesvios,ausencias:renderAusencias,incidencias:renderIncidencias,alertas:renderAlertas,usuarios:renderUsuarios,municipalidades:renderMunicipalidades,parqueos:renderParqueos};
+  if(m[p])m[p]();
+}
+// ============================================================
+// COUNTS & DOTS
+// ============================================================
+async function updateCounts(){
+  for(const t of ['lineas','estaciones','buses','pilotos','asignaciones','desvios','ausencias','usuarios','municipalidades','parqueos']){
+    const el=document.getElementById('cnt-'+t);if(el)el.textContent=await db[t].count();
+  }
+  const aa=await db.alertas.where('atendida').equals(0).count();
+  document.getElementById('adot').classList.toggle('show',aa>0);
+  document.getElementById('dot-alertas').classList.toggle('show',aa>0);
+  const ai=await db.incidencias.where('estado').equals('activa').count();
+  document.getElementById('dot-incidencias').classList.toggle('show',ai>0);
+  const au=await db.ausencias.where('atendida').equals(0).count();
+  if(document.getElementById('dot-ausencias'))document.getElementById('dot-ausencias').classList.toggle('show',au>0);
+}
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=(type==='success'?'✅ ':type==='error'?'❌ ':'⚠️ ')+msg;
+  t.className=type;setTimeout(()=>t.className='',3500);
+}
+// ============================================================
+// MODAL
+// ============================================================
+let CM=null,EID=null;
+function openModal(type,id=null){
+  CM=type;EID=id;
+  const labels={linea:'Línea',estacion:'Estación',bus:'Bus',piloto:'Piloto',asignacion:'Asignación',desvio:'Desvío / Suspensión',ausencia:'Ausencia de Piloto',incidencia:'Incidencia',cerrar_inc:'Cerrar Incidencia',finalizar_desvio:'Finalizar Desvío',cambio_turno:'Cambio de Turno',usuario:'Usuario',municipalidad:'Municipalidad',parqueo:'Parqueo'};
+  document.getElementById('modal-title').textContent=(id?'Editar ':'Nuevo/a ')+(labels[type]||type);
+  buildForm(type,id);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeMO(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');CM=null;EID=null;}
+function gv(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+
+async function buildForm(type,id){
+  const body=document.getElementById('modal-body');
+  let data=id?(await db[(type==='cerrar_inc'?'incidencias':type==='finalizar_desvio'?'desvios':type==='cambio_turno'?'asignaciones':type+'s')]?.get(id)||{}):{}; 
+  const lineas=await db.lineas.toArray();
+  const munis=await db.municipalidades.toArray();
+  const parqueos=await db.parqueos.toArray();
+  const buses=await db.buses.toArray();
+  const pilotos=await db.pilotos.toArray();
+  const estaciones=await db.estaciones.toArray();
+
+  const sel=(fid,arr,val,lbl='nombre',ex='')=>{
+    const opts=arr.map(a=>`<option value="${a.id}" ${a.id==val?'selected':''}>${a[lbl]||a.nombre||a.placa||a.username}</option>`).join('');
+    return `<select class="fc" id="${fid}" ${ex}><option value="">-- Ninguno --</option>${opts}</select>`;
+  };
+  const inp=(lbl,fid,t='text',v='',ex='')=>`<div class="fg"><label>${lbl}</label><input class="fc" id="${fid}" type="${t}" value="${v||''}" ${ex}></div>`;
+  const slt=(lbl,fid,opts,val='')=>`<div class="fg"><label>${lbl}</label><select class="fc" id="${fid}">${opts.map(o=>`<option value="${o.v||o}" ${(o.v||o)==val?'selected':''}>${o.l||o}</option>`).join('')}</select></div>`;
+
+  if(type==='linea'){
+    body.innerHTML=`<div class="frow">${inp('Número','f_numero','text',data.numero,'placeholder="12"')}${inp('Nombre','f_nombre','text',data.nombre)}</div>
+    ${inp('Origen','f_origen','text',data.origen,'placeholder="Plaza Barrios, Zona 1"')}
+    ${inp('Destino','f_destino','text',data.destino,'placeholder="Centra Sur, Villa Nueva"')}
+    ${inp('Zonas que recorre','f_zonas','text',data.zonas,'placeholder="Zona 1, 4, 12"')}
+    <div class="frow">${inp('Distancia (km)','f_km','number',data.distanciaKm,'min="0" step="0.1"')}<div class="fg"><label>Municipalidad</label>${sel('f_muni',munis,data.municipalidadId)}</div></div>
+    <div class="frow">${inp('Horario L-V','f_hlv','text',data.horarioLV,'placeholder="4:30 a.m. – 10:00 p.m."')}${inp('Horario FDS','f_hfds','text',data.horarioFDS,'placeholder="4:30 a.m. – 9:00 p.m."')}</div>
+    <div class="frow">${slt('Tipo de Servicio','f_tipo',[{v:'brt',l:'BRT (Bus Rapid Transit)'},{v:'mixto',l:'Mixto / Convencional'}],data.tipoServicio||'brt')}${slt('Estado Operativo','f_estado',[{v:'activa',l:'Activa'},{v:'suspendida',l:'Suspendida'},{v:'con_desvio',l:'Con Desvío'},{v:'mantenimiento',l:'En Mantenimiento'}],data.estado||'activa')}</div>`;
+  } else if(type==='estacion'){
+    body.innerHTML=`${inp('Nombre','f_nombre','text',data.nombre)}<div class="frow">${inp('Zona','f_zona','text',data.zona,'placeholder="Zona 1"')}<div class="fg"><label>Municipalidad</label>${sel('f_muni',munis,data.municipalidadId)}</div></div>
+    ${inp('Líneas que pasan','f_lineas','text',data.lineas,'placeholder="L12, L13, L18"')}
+    <div class="frow">${inp('Accesos','f_accesos','number',data.accesos||1,'min="1"')}${inp('Guardias','f_guardias','number',data.guardias||1,'min="1"')}</div>
+    <div class="frow">${slt('Transbordo','f_transbor',[{v:'no',l:'No'},{v:'si',l:'Sí'}],data.esTransbordo||'no')}${slt('Parqueo','f_pq',[{v:'no',l:'No'},{v:'si',l:'Sí'}],data.tieneParqueo||'no')}</div>
+    ${slt('Estado Operativo','f_estop',[{v:'operativa',l:'Operativa'},{v:'cerrada',l:'Cerrada'},{v:'con_incidencia',l:'Con Incidencia Activa'}],data.estadoOperativo||'operativa')}`;
+  } else if(type==='bus'){
+    body.innerHTML=`<div class="frow">${inp('Placa','f_placa','text',data.placa,'placeholder="TM-001-GT"')}${slt('Tipo','f_tipo',[{v:'articulado',l:'Articulado (~160 pax)'},{v:'biarticulado',l:'Bi-articulado (~230 pax)'},{v:'convencional',l:'Convencional (~119 pax)'},{v:'electrico',l:'Eléctrico'}],data.tipo||'articulado')}</div>
+    <div class="fg"><label>Línea Asignada</label>${sel('f_linea',lineas,data.lineaId,'nombre')}</div>
+    <div class="frow">${inp('Cap. Máxima','f_cap','number',data.capacidadMax||160,'min="1"')}${inp('Pasajeros Actuales','f_pas','number',data.pasajerosActuales||0,'min="0"')}</div>
+    ${slt('Estado','f_ebus',[{v:'operativo',l:'Operativo'},{v:'mantenimiento',l:'En Mantenimiento'},{v:'fuera_servicio',l:'Fuera de Servicio'}],data.estadoBus||'operativo')}
+    <div class="fg"><label>Parqueo</label>${sel('f_parq',parqueos,data.parqueoId)}</div>`;
+  } else if(type==='piloto'){
+    body.innerHTML=`${inp('Nombre Completo','f_nombre','text',data.nombre)}
+    <div class="frow">${inp('DPI','f_dpi','text',data.dpi,'placeholder="1234567890101"')}${inp('Teléfono','f_tel','tel',data.telefono,'placeholder="5500-0000"')}</div>
+    <div class="frow">${inp('No. Licencia','f_lic','text',data.licencia,'placeholder="GT-000000"')}${slt('Tipo Licencia','f_tlic',[{v:'A',l:'Tipo A'},{v:'B',l:'Tipo B'},{v:'C',l:'Tipo C — Articulado'}],data.tipoLicencia||'C')}</div>
+    ${inp('Dirección','f_dir','text',data.direccion)}
+    <div class="frow">${slt('Educación','f_edu',[{v:'primaria',l:'Primaria'},{v:'basico',l:'Básico'},{v:'diversificado',l:'Diversificado'},{v:'universitario',l:'Universitario'}],data.nivelEducativo||'diversificado')}${slt('Turno','f_turno',[{v:'mañana',l:'Mañana (4am–12pm)'},{v:'tarde',l:'Tarde (12pm–8pm)'},{v:'noche',l:'Noche (8pm–4am)'}],data.turno||'mañana')}</div>
+    <div class="frow"><div class="fg"><label>Bus Asignado</label>${sel('f_bus',buses.filter(b=>b.estadoBus==='operativo'),data.busId,'placa')}</div>${slt('Estado Laboral','f_elab',[{v:'activo',l:'Activo'},{v:'inactivo',l:'Inactivo'}],data.estadoLaboral||'activo')}</div>`;
+  } else if(type==='asignacion'){
+    const pa=pilotos.filter(p=>p.estadoLaboral==='activo');
+    const bo=buses.filter(b=>b.estadoBus==='operativo');
+    body.innerHTML=`<p class="inote">ℹ️ REQ-0021: Solo pilotos activos y buses operativos. Valida doble asignación en el mismo turno.</p>
+    <div class="frow">${slt('Turno','f_turno',[{v:'mañana',l:'Mañana'},{v:'tarde',l:'Tarde'},{v:'noche',l:'Noche'}],data.turno||'mañana')}${inp('Fecha','f_fecha','date',data.fecha||new Date().toISOString().split('T')[0])}</div>
+    <div class="fg"><label>Línea</label>${sel('f_linea',lineas,data.lineaId,'nombre')}</div>
+    <div class="fg"><label>Bus (solo Operativos)</label>${sel('f_bus',bo,data.busId,'placa')}</div>
+    <div class="fg"><label>Piloto (solo Activos)</label>${sel('f_piloto',pa,data.pilotoId,'nombre')}</div>
+    ${slt('Estado','f_east',[{v:'activa',l:'Activa'},{v:'completada',l:'Completada'},{v:'cancelada',l:'Cancelada'}],data.estado||'activa')}`;
+  } else if(type==='cambio_turno'){
+    document.getElementById('modal-title').textContent='Cambio de Turno (REQ-0024)';
+    const pa=pilotos.filter(p=>p.estadoLaboral==='activo');
+    const bo=buses.filter(b=>b.estadoBus==='operativo');
+    body.innerHTML=`<p class="inote">REQ-0024: El cambio queda vinculado a la asignación original #${id}.</p>
+    ${slt('Tipo de Cambio','f_tipocambio',[{v:'sustitución_piloto',l:'Sustitución de Piloto'},{v:'cambio_bus',l:'Cambio de Bus'},{v:'reasignación_linea',l:'Reasignación de Línea'}],'sustitución_piloto')}
+    ${inp('Motivo del Cambio','f_motivo','text','','placeholder="Ausencia, falla mecánica, desvío..."')}
+    <div class="fg"><label>Nuevo Piloto (si aplica)</label>${sel('f_npiloto',pa,null,'nombre')}</div>
+    <div class="fg"><label>Nuevo Bus (si aplica)</label>${sel('f_nbus',bo,null,'placa')}</div>
+    ${inp('Hora del Cambio','f_hora','datetime-local',new Date().toISOString().slice(0,16))}`;
+  } else if(type==='desvio'){
+    body.innerHTML=`<p class="inote">REQ-0008: Registro formal de desvíos con motivo, estaciones afectadas, hora y duración.</p>
+    <div class="fg"><label>Línea Afectada</label>${sel('f_linea',lineas,data.lineaId,'nombre')}</div>
+    ${slt('Tipo de Evento','f_tipo',[{v:'desvio',l:'Desvío Temporal'},{v:'suspension_parcial',l:'Suspensión Parcial'},{v:'suspension_total',l:'Suspensión Total'}],data.tipo||'desvio')}
+    ${inp('Motivo','f_motivo','text',data.motivo,'placeholder="Procesión, accidente, manifestación..."')}
+    ${inp('Estaciones Afectadas','f_estaciones','text',data.estacionesAfectadas,'placeholder="San Sebastián, El Calvario, Centro Cívico"')}
+    <div class="frow">${inp('Hora de Inicio','f_hinicio','datetime-local',data.horaInicio||new Date().toISOString().slice(0,16))}${inp('Duración Estimada','f_dur','text',data.duracionEstimada,'placeholder="2 horas / Indefinido"')}</div>`;
+  } else if(type==='finalizar_desvio'){
+    document.getElementById('modal-title').textContent='Finalizar Desvío #'+id;
+    body.innerHTML=`<p class="inote">REQ-0010: El desvío pasará a estado Finalizado y quedará en el historial.</p>
+    ${inp('Hora de Finalización','f_hfin','datetime-local',new Date().toISOString().slice(0,16))}
+    <div class="fg"><label>Observaciones finales</label><textarea class="fc" id="f_obs" rows="3" placeholder="Describe cómo se resolvió el desvío..."></textarea></div>`;
+  } else if(type==='ausencia'){
+    body.innerHTML=`<p class="inote">REQ-0022: La ausencia genera una alerta automática para el supervisor y despachador.</p>
+    <div class="fg"><label>Piloto Ausente</label>${sel('f_piloto',pilotos,data.pilotoId,'nombre')}</div>
+    <div class="frow">${slt('Turno','f_turno',[{v:'mañana',l:'Mañana'},{v:'tarde',l:'Tarde'},{v:'noche',l:'Noche'}],data.turno||'mañana')}${inp('Fecha','f_fecha','date',data.fecha||new Date().toISOString().split('T')[0])}</div>
+    ${slt('Motivo','f_motivo',[{v:'Enfermedad',l:'🤒 Enfermedad'},{v:'Permiso',l:'📝 Permiso'},{v:'No_Presentación',l:'🚫 No Presentación'}],data.motivo||'Enfermedad')}
+    <div class="fg"><label>Línea Afectada</label>${sel('f_linea',lineas,data.lineaId,'nombre')}</div>
+    <div class="fg"><label>Piloto de Reemplazo (si disponible)</label>${sel('f_reemplazo',pilotos.filter(p=>p.estadoLaboral==='activo'),data.reemplazoId,'nombre')}</div>`;
+  } else if(type==='incidencia'){
+    body.innerHTML=`<div class="frow">${slt('Tipo','f_tipo',[{v:'accidente',l:'Accidente'},{v:'falla_mecanica',l:'Falla Mecánica'},{v:'aglomeracion',l:'Aglomeración'},{v:'seguridad',l:'Seguridad'},{v:'desvio',l:'Desvío'},{v:'otro',l:'Otro'}],data.tipo||'falla_mecanica')}${slt('Severidad','f_sev',[{v:'Alta',l:'🔴 Alta'},{v:'Media',l:'🟡 Media'},{v:'Baja',l:'🟢 Baja'}],data.severidad||'Media')}</div>
+    <div class="fg"><label>Línea Involucrada</label>${sel('f_linea',lineas,data.lineaId,'nombre')}</div>
+    <div class="fg"><label>Estación / Tramo</label>${sel('f_est',estaciones,data.estacionId,'nombre')}</div>
+    <div class="fg"><label>Descripción</label><textarea class="fc" id="f_desc" rows="3" placeholder="Describe la incidencia...">${data.descripcion||''}</textarea></div>
+    ${inp('Hora de Inicio','f_hinicio','datetime-local',data.horaInicio||new Date().toISOString().slice(0,16))}`;
+  } else if(type==='cerrar_inc'){
+    document.getElementById('modal-title').textContent='Cerrar Incidencia #'+id+' (REQ-0026)';
+    body.innerHTML=`<div class="fg"><label>Acción Tomada</label><textarea class="fc" id="f_accion" rows="3" placeholder="Describe la acción que resolvió la incidencia..."></textarea></div>
+    ${inp('Hora de Resolución','f_hres','datetime-local',new Date().toISOString().slice(0,16))}`;
+  } else if(type==='usuario'){
+    body.innerHTML=`<p class="inote">REQ-0002: Cada rol tiene acceso restringido a módulos específicos del sistema.</p>
+    <div class="frow">${inp('Nombre Completo','f_nombre','text',data.nombre)}${inp('Nombre de Usuario','f_user','text',data.username,'placeholder="usuario123"')}</div>
+    ${id?'':inp('Contraseña','f_pw','password','','placeholder="••••••••"')}
+    ${slt('Rol del Sistema','f_rol',[{v:'admin',l:'Administrador General'},{v:'supervisor',l:'Supervisor de Rutas'},{v:'despachador',l:'Despachador'},{v:'piloto',l:'Piloto'}],data.rol||'despachador')}
+    ${slt('Estado de la Cuenta','f_activo',[{v:'1',l:'Activa'},{v:'0',l:'Desactivada'}],(data.activo===undefined?'1':String(data.activo)))}`;
+  } else if(type==='municipalidad'){
+    body.innerHTML=`${inp('Nombre','f_nombre','text',data.nombre)}<div class="frow">${inp('Departamento','f_dep','text',data.departamento||'Guatemala')}${inp('Zonas','f_zonas','text',data.zonas,'placeholder="Zona 1, 2..."')}</div>`;
+  } else if(type==='parqueo'){
+    body.innerHTML=`${inp('Nombre','f_nombre','text',data.nombre)}${inp('Ubicación','f_ubic','text',data.ubicacion)}${inp('Capacidad (buses)','f_cap','number',data.capacidad||20,'min="1"')}`;
+  }
+}
+
+async function saveRecord(){
+  const type=CM;let r={};
+  if(type==='linea'){
+    const n=gv('f_nombre'),nu=gv('f_numero');if(!n||!nu){toast('Número y nombre obligatorios.','error');return;}
+    r={numero:nu,nombre:n,origen:gv('f_origen'),destino:gv('f_destino'),zonas:gv('f_zonas'),distanciaKm:+gv('f_km')||0,horarioLV:gv('f_hlv'),horarioFDS:gv('f_hfds'),tipoServicio:gv('f_tipo')||'brt',estado:gv('f_estado')||'activa',municipalidadId:+gv('f_muni')||null};
+    if(r.estado==='suspendida'||r.estado==='con_desvio')await mkAlert('linea_estado','Línea '+r.numero+' — '+r.nombre+' cambió a: '+r.estado,'Alta','Líneas');
+  } else if(type==='estacion'){
+    const n=gv('f_nombre');if(!n){toast('Nombre obligatorio.','error');return;}
+    r={nombre:n,zona:gv('f_zona'),municipalidadId:+gv('f_muni')||null,lineas:gv('f_lineas'),accesos:+gv('f_accesos')||1,guardias:+gv('f_guardias')||1,esTransbordo:gv('f_transbor')||'no',tieneParqueo:gv('f_pq')||'no',estadoOperativo:gv('f_estop')||'operativa'};
+  } else if(type==='bus'){
+    const pl=gv('f_placa');if(!pl){toast('Placa obligatoria.','error');return;}
+    const cap=+gv('f_cap')||160,pas=+gv('f_pas')||0;
+    if(pas>cap){toast('Pasajeros no pueden superar capacidad.','error');return;}
+    r={placa:pl,tipo:gv('f_tipo')||'articulado',lineaId:+gv('f_linea')||null,capacidadMax:cap,pasajerosActuales:pas,estadoBus:gv('f_ebus')||'operativo',parqueoId:+gv('f_parq')||null};
+    if(pas/cap>=1.5)await mkAlert('capacidad','Bus '+pl+' supera 50% de capacidad ('+pas+'/'+cap+' pax).','Alta','Buses');
+  } else if(type==='piloto'){
+    const n=gv('f_nombre');if(!n){toast('Nombre obligatorio.','error');return;}
+    r={nombre:n,dpi:gv('f_dpi'),telefono:gv('f_tel'),licencia:gv('f_lic'),tipoLicencia:gv('f_tlic'),direccion:gv('f_dir'),nivelEducativo:gv('f_edu'),turno:gv('f_turno')||'mañana',busId:+gv('f_bus')||null,estadoLaboral:gv('f_elab')||'activo'};
+  } else if(type==='asignacion'){
+    const li=+gv('f_linea')||null,bi=+gv('f_bus')||null,pi=+gv('f_piloto')||null,tu=gv('f_turno'),fe=gv('f_fecha');
+    if(!li||!bi||!pi||!tu||!fe){toast('Todos los campos son obligatorios.','error');return;}
+    const existing=await db.asignaciones.where('fecha').equals(fe).toArray();
+    const dpiloto=existing.find(a=>a.pilotoId===pi&&a.turno===tu&&a.estado==='activa'&&a.id!==EID);
+    const dbus=existing.find(a=>a.busId===bi&&a.turno===tu&&a.estado==='activa'&&a.id!==EID);
+    if(dpiloto){toast('REQ-0021: Piloto ya tiene asignación activa en turno '+tu+'.','error');return;}
+    if(dbus){toast('REQ-0021: Bus ya tiene asignación activa en turno '+tu+'.','error');return;}
+    r={lineaId:li,busId:bi,pilotoId:pi,turno:tu,fecha:fe,estado:gv('f_east')||'activa',creadoPor:CU.username,creadoEn:new Date().toISOString(),cambios:[]};
+  } else if(type==='cambio_turno'){
+    const motivo=gv('f_motivo');if(!motivo){toast('El motivo es obligatorio.','error');return;}
+    const cambio={tipo:gv('f_tipocambio'),motivo,nuevoPilotoId:+gv('f_npiloto')||null,nuevoBusId:+gv('f_nbus')||null,hora:gv('f_hora')||new Date().toISOString(),registradoPor:CU.username};
+    const asig=await db.asignaciones.get(EID);
+    const cambios=[...(asig.cambios||[]),cambio];
+    await db.asignaciones.update(EID,{cambios});
+    toast('Cambio de turno registrado (REQ-0024).');closeModal();await updateCounts();renderPage(getCP());return;
+  } else if(type==='desvio'){
+    const mo=gv('f_motivo');if(!mo){toast('El motivo es obligatorio.','error');return;}
+    r={lineaId:+gv('f_linea')||null,tipo:gv('f_tipo')||'desvio',motivo:mo,estacionesAfectadas:gv('f_estaciones'),horaInicio:gv('f_hinicio')||new Date().toISOString(),duracionEstimada:gv('f_dur'),estado:'activo',registradoPor:CU.username,registradoEn:new Date().toISOString()};
+    await mkAlert('desvio','Desvío registrado en '+((await db.lineas.get(r.lineaId))?.nombre||'línea')+': '+mo,'Media','Desvíos');
+  } else if(type==='finalizar_desvio'){
+    await db.desvios.update(EID,{estado:'finalizado',horaFin:gv('f_hfin'),observaciones:gv('f_obs'),finalizadoPor:CU.username});
+    toast('Desvío finalizado. Historial actualizado (REQ-0010).');closeModal();await updateCounts();renderPage(getCP());return;
+  } else if(type==='ausencia'){
+    const pi=+gv('f_piloto')||null;if(!pi){toast('Selecciona un piloto.','error');return;}
+    r={pilotoId:pi,turno:gv('f_turno')||'mañana',fecha:gv('f_fecha')||new Date().toISOString().split('T')[0],motivo:gv('f_motivo')||'Enfermedad',lineaId:+gv('f_linea')||null,reemplazoId:+gv('f_reemplazo')||null,registradoPor:CU.username,atendida:0};
+    const piloto=await db.pilotos.get(pi);
+    const sinReemplazo=!r.reemplazoId;
+    await mkAlert('ausencia_piloto','Piloto '+piloto?.nombre+' ausente ('+r.motivo+') en turno '+r.turno+'.'+( sinReemplazo?' Sin reemplazo asignado.':''),'Alta','Ausencias');
+  } else if(type==='incidencia'){
+    const desc=gv('f_desc');if(!desc){toast('La descripción es obligatoria.','error');return;}
+    r={tipo:gv('f_tipo')||'otro',lineaId:+gv('f_linea')||null,estacionId:+gv('f_est')||null,severidad:gv('f_sev')||'Media',descripcion:desc,horaInicio:gv('f_hinicio')||new Date().toISOString(),estado:'activa',creadoPor:CU.username};
+    if(r.severidad==='Alta')await mkAlert('incidencia_alta','Incidencia ALTA: '+desc.substring(0,60),'Alta','Incidencias');
+  } else if(type==='cerrar_inc'){
+    const ac=gv('f_accion');if(!ac){toast('Describe la acción tomada.','error');return;}
+    await db.incidencias.update(EID,{estado:'cerrada',accionTomada:ac,horaResolucion:gv('f_hres'),cerradoPor:CU.username});
+    toast('Incidencia cerrada. (REQ-0026)');closeModal();await updateCounts();renderPage(getCP());return;
+  } else if(type==='usuario'){
+    const n=gv('f_nombre'),u=gv('f_user');if(!n||!u){toast('Nombre y usuario obligatorios.','error');return;}
+    r={nombre:n,username:u,rol:gv('f_rol')||'despachador',activo:+gv('f_activo'),intentosFallidos:0,creadoEn:new Date().toISOString()};
+    if(!EID){const pw=gv('f_pw');if(!pw){toast('La contraseña es obligatoria.','error');return;}r.password=pw;}
+  } else if(type==='municipalidad'){
+    const n=gv('f_nombre');if(!n){toast('Nombre obligatorio.','error');return;}
+    r={nombre:n,departamento:gv('f_dep')||'Guatemala',zonas:gv('f_zonas')};
+  } else if(type==='parqueo'){
+    const n=gv('f_nombre');if(!n){toast('Nombre obligatorio.','error');return;}
+    r={nombre:n,ubicacion:gv('f_ubic'),capacidad:+gv('f_cap')||20};
+  }
+  const tn=type+'s';
+  if(EID){await db[tn].update(EID,r);toast(cap(type)+' actualizado.');}
+  else{await db[tn].add(r);toast(cap(type)+' creado.');}
+  closeModal();await updateCounts();renderPage(getCP());
+}
+
+async function deleteRecord(type,id){
+  if(!confirm('¿Eliminar este registro?'))return;
+  await db[type+'s'].delete(id);toast(cap(type)+' eliminado.');
+  await updateCounts();renderPage(getCP());
+}
+
+async function mkAlert(tipo,desc,nivel,modulo){
+  await db.alertas.add({tipo,descripcion:desc,nivel,modulo,hora:new Date().toISOString(),atendida:0});
+  await updateCounts();
+}
+async function marcarAtendida(id){
+  await db.alertas.update(id,{atendida:1,atendidaPor:CU.username,horaAtendida:new Date().toISOString()});
+  await updateCounts();renderPage(getCP());
+}
+async function marcarTodas(){
+  const p=await db.alertas.where('atendida').equals(0).toArray();
+  for(const a of p)await db.alertas.update(a.id,{atendida:1,atendidaPor:CU.username,horaAtendida:new Date().toISOString()});
+  await updateCounts();renderPage('alertas');toast('Todas las alertas atendidas.');
+}
+
+// ============================================================
+// RENDER HELPERS
+// ============================================================
+function lb(num){const c={'1':'l1','2':'l2','5':'l5','6':'l6','7':'l7','12':'l12','13':'l13','17':'l17','18':'l18','21':'l21'};return`<span class="badge ${c[num]||'bg-gray'}">L${num}</span>`;}
+function eb(e){
+  const m={activa:'bg-green',operativo:'bg-green',operativa:'bg-green',activo:'bg-green',activo_d:'bg-green',completada:'bg-teal',suspendida:'bg-red',fuera_servicio:'bg-red',inactivo:'bg-red',mantenimiento:'bg-amber',con_desvio:'bg-amber',cerrada:'bg-gray',cancelada:'bg-gray',con_incidencia:'bg-red',finalizado:'bg-gray'};
+  const lb2={activa:'Activa',operativo:'Operativo',operativa:'Operativa',activo:'Activo',completada:'Completada',suspendida:'Suspendida',fuera_servicio:'Fuera de Servicio',inactivo:'Inactivo',mantenimiento:'Mantenimiento',con_desvio:'Con Desvío',cerrada:'Cerrada',cancelada:'Cancelada',con_incidencia:'Con Incidencia',finalizado:'Finalizado',activo_d:'Activo'};
+  return`<span class="badge ${m[e]||'bg-gray'}">${lb2[e]||e||'—'}</span>`;
+}
+
+// ============================================================
+// RENDERS
+// ============================================================
+async function renderLineas(q=''){
+  let rows=await db.lineas.toArray();
+  const munis=await db.municipalidades.toArray();const mm=Object.fromEntries(munis.map(m=>[m.id,m.nombre]));
+  if(q)rows=rows.filter(r=>(r.nombre+r.numero+r.origen+r.destino).toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-lineas'),em=document.getElementById('empty-lineas');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin',isS=CU.rol==='supervisor';
+  tb.innerHTML=rows.map(r=>`<tr><td>${lb(r.numero||'?')}</td><td class="fw7">${r.nombre}</td><td class="tsm">${r.origen||'—'}</td><td class="tsm">${r.destino||'—'}</td><td class="tsm" style="color:var(--text-muted);">${r.zonas||'—'}</td><td>${r.distanciaKm||0}km</td><td><span class="badge bg-blue">${r.tipoServicio||'brt'}</span></td><td>${eb(r.estado)}</td><td><div class="ac">${isA||isS?`<button class="btn btn-ghost btn-sm" onclick="openModal('linea',${r.id})">✏️</button>`:''}${isA?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('linea',${r.id})">🗑️</button>`:''}</div></td></tr>`).join('');
+}
+
+async function renderEstaciones(q=''){
+  let rows=await db.estaciones.toArray();
+  const munis=await db.municipalidades.toArray();const mm=Object.fromEntries(munis.map(m=>[m.id,m.nombre]));
+  if(q)rows=rows.filter(r=>r.nombre.toLowerCase().includes(q.toLowerCase())||(r.zona||'').toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-estaciones'),em=document.getElementById('empty-estaciones');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin';
+  tb.innerHTML=rows.map(r=>`<tr><td class="fw7">${r.nombre}</td><td><span class="badge bg-gray">${r.zona||'—'}</span></td><td class="tsm">${mm[r.municipalidadId]||'—'}</td><td class="tsm">${r.lineas||'—'}</td><td>${r.accesos||1}</td><td>${r.guardias||1}</td><td>${r.esTransbordo==='si'?'<span class="badge bg-purple">✔ Sí</span>':'<span class="badge bg-gray">No</span>'}</td><td>${r.tieneParqueo==='si'?'<span class="badge bg-green">✔ Sí</span>':'<span class="badge bg-gray">No</span>'}</td><td>${eb(r.estadoOperativo||'operativa')}</td><td><div class="ac">${isA?`<button class="btn btn-ghost btn-sm" onclick="openModal('estacion',${r.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteRecord('estacion',${r.id})">🗑️</button>`:''}</div></td></tr>`).join('');
+}
+
+async function renderBuses(q=''){
+  let rows=await db.buses.toArray();
+  const lineas=await db.lineas.toArray(),parqueos=await db.parqueos.toArray();
+  const lm=Object.fromEntries(lineas.map(l=>[l.id,l])),pm=Object.fromEntries(parqueos.map(p=>[p.id,p.nombre]));
+  if(q)rows=rows.filter(r=>r.placa.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-buses'),em=document.getElementById('empty-buses');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin',isDes=CU.rol==='despachador';
+  tb.innerHTML=rows.map(r=>{
+    const pct=r.capacidadMax?Math.round((r.pasajerosActuales/r.capacidadMax)*100):0;
+    const l=lm[r.lineaId];
+    return`<tr><td class="fw7">${r.placa}</td><td><span class="badge bg-blue">${r.tipo||'articulado'}</span></td><td>${l?lb(l.numero||'?')+' <span class="tsm">'+l.nombre+'</span>':'<span class="tsm">Sin asignar</span>'}</td><td>${r.capacidadMax}</td><td>${r.pasajerosActuales} <span class="tsm">(${pct}%)</span></td><td>${eb(r.estadoBus||'operativo')}</td><td class="tsm">${pm[r.parqueoId]||'—'}</td><td><div class="ac">${isA||isDes?`<button class="btn btn-ghost btn-sm" onclick="openModal('bus',${r.id})">✏️</button>`:''}${isA?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('bus',${r.id})">🗑️</button>`:''}</div></td></tr>`;
+  }).join('');
+}
+
+async function renderPilotos(q=''){
+  let rows=await db.pilotos.toArray();
+  const buses=await db.buses.toArray();const bm=Object.fromEntries(buses.map(b=>[b.id,b.placa]));
+  if(q)rows=rows.filter(r=>r.nombre.toLowerCase().includes(q.toLowerCase())||(r.dpi||'').includes(q));
+  const tb=document.getElementById('tbody-pilotos'),em=document.getElementById('empty-pilotos');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin';
+  tb.innerHTML=rows.map(r=>`<tr><td class="fw7">${r.nombre}</td><td class="tsm">${r.dpi||'—'}</td><td class="tsm">${r.licencia||'—'} <span class="badge bg-gray">${r.tipoLicencia||''}</span></td><td><span class="badge bg-purple">${r.turno||'—'}</span></td><td class="tsm">${r.nivelEducativo||'—'}</td><td>${bm[r.busId]||'<span class="tsm">Sin asignar</span>'}</td><td>${eb(r.estadoLaboral||'activo')}</td><td><div class="ac">${isA?`<button class="btn btn-ghost btn-sm" onclick="openModal('piloto',${r.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteRecord('piloto',${r.id})">🗑️</button>`:''}</div></td></tr>`).join('');
+}
+
+async function renderAsignaciones(q=''){
+  const tf=document.getElementById('ftturno')?.value||'';
+  let rows=await db.asignaciones.toArray();rows.sort((a,b)=>b.id-a.id);
+  const lineas=await db.lineas.toArray(),buses=await db.buses.toArray(),pilotos=await db.pilotos.toArray();
+  const lm=Object.fromEntries(lineas.map(l=>[l.id,l])),bm=Object.fromEntries(buses.map(b=>[b.id,b])),pm=Object.fromEntries(pilotos.map(p=>[p.id,p]));
+  if(q)rows=rows.filter(r=>{const p=pm[r.pilotoId],b=bm[r.busId];return(p?.nombre||'').toLowerCase().includes(q.toLowerCase())||(b?.placa||'').includes(q);});
+  if(tf)rows=rows.filter(r=>r.turno===tf);
+  const tb=document.getElementById('tbody-asignaciones'),em=document.getElementById('empty-asignaciones');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin',isDes=CU.rol==='despachador';
+  tb.innerHTML=rows.map(r=>{
+    const l=lm[r.lineaId],b=bm[r.busId],p=pm[r.pilotoId];
+    const ncambios=(r.cambios||[]).length;
+    return`<tr><td class="tsm">${r.fecha||'—'}</td><td><span class="badge bg-purple">${r.turno||'—'}</span></td><td>${l?lb(l.numero||'?')+' <span class="tsm">'+l.nombre+'</span>':'—'}</td><td class="fw7">${b?.placa||'—'}</td><td>${p?.nombre||'—'}</td><td class="tsm">${r.creadoPor||'—'}</td><td>${eb(r.estado||'activa')}</td><td>${ncambios>0?`<span class="badge bg-amber">${ncambios} cambio(s)</span>`:'<span class="tsm">Sin cambios</span>'}</td><td><div class="ac">${isA||isDes?`<button class="btn btn-ghost btn-sm" onclick="openModal('asignacion',${r.id})">✏️</button><button class="btn btn-warn btn-sm" onclick="openModal('cambio_turno',${r.id})" title="Registrar cambio de turno (REQ-0024)">🔄</button>`:''}${isA?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('asignacion',${r.id})">🗑️</button>`:''}</div></td></tr>`;
+  }).join('');
+}
+
+async function renderDesvios(q=''){
+  const fe=document.getElementById('ft-dest-estado')?.value||'';
+  let rows=await db.desvios.toArray();rows.sort((a,b)=>b.id-a.id);
+  const lineas=await db.lineas.toArray();const lm=Object.fromEntries(lineas.map(l=>[l.id,l]));
+  if(q)rows=rows.filter(r=>(r.motivo||'').toLowerCase().includes(q.toLowerCase()));
+  if(fe)rows=rows.filter(r=>r.estado===fe);
+  const tb=document.getElementById('tbody-desvios'),em=document.getElementById('empty-desvios');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin',isS=CU.rol==='supervisor';
+  tb.innerHTML=rows.map(r=>{
+    const l=lm[r.lineaId];
+    return`<tr><td>${l?lb(l.numero||'?')+' <span class="tsm">'+l.nombre+'</span>':'—'}</td><td class="fw7">${r.motivo||'—'}</td><td class="tsm">${r.estacionesAfectadas||'—'}</td><td class="tsm">${r.horaInicio?new Date(r.horaInicio).toLocaleString('es-GT'):'—'}</td><td class="tsm">${r.duracionEstimada||'—'}</td><td class="tsm">${r.registradoPor||'—'}</td><td>${eb(r.estado||'activo')}</td><td><div class="ac">${r.estado==='activo'&&(isA||isS)?`<button class="btn btn-success btn-sm" onclick="openModal('finalizar_desvio',${r.id})">✔ Finalizar</button>`:''}${isA?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('desvio',${r.id})">🗑️</button>`:''}</div></td></tr>`;
+  }).join('');
+}
+
+async function renderAusencias(q=''){
+  let rows=await db.ausencias.toArray();rows.sort((a,b)=>b.id-a.id);
+  const pilotos=await db.pilotos.toArray(),lineas=await db.lineas.toArray(),pilotos2=await db.pilotos.toArray();
+  const pm=Object.fromEntries(pilotos.map(p=>[p.id,p])),lm=Object.fromEntries(lineas.map(l=>[l.id,l]));
+  if(q)rows=rows.filter(r=>(pm[r.pilotoId]?.nombre||'').toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-ausencias'),em=document.getElementById('empty-ausencias');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin';
+  const motBadge={Enfermedad:'bg-red',Permiso:'bg-amber',No_Presentación:'bg-red'};
+  tb.innerHTML=rows.map(r=>{
+    const p=pm[r.pilotoId],l=lm[r.lineaId],remp=pm[r.reemplazoId];
+    return`<tr><td class="tsm">${r.fecha||'—'}</td><td class="fw7">${p?.nombre||'—'}</td><td><span class="badge bg-purple">${r.turno||'—'}</span></td><td><span class="badge ${motBadge[r.motivo]||'bg-gray'}">${r.motivo||'—'}</span></td><td>${l?lb(l.numero||'?')+' '+l.nombre:'<span class="tsm">—</span>'}</td><td>${remp?'<span class="badge bg-green">'+remp.nombre+'</span>':'<span class="badge bg-red">Sin reemplazo</span>'}</td><td class="tsm">${r.registradoPor||'—'}</td><td><div class="ac">${isA?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('ausencia',${r.id})">🗑️</button>`:''}</div></td></tr>`;
+  }).join('');
+}
+
+async function renderIncidencias(q=''){
+  const fe=document.getElementById('ft-inc-est')?.value||'';
+  let rows=await db.incidencias.toArray();rows.sort((a,b)=>b.id-a.id);
+  const lineas=await db.lineas.toArray(),est=await db.estaciones.toArray();
+  const lm=Object.fromEntries(lineas.map(l=>[l.id,l])),em2=Object.fromEntries(est.map(e=>[e.id,e]));
+  if(q)rows=rows.filter(r=>(r.descripcion||'').toLowerCase().includes(q.toLowerCase()));
+  if(fe)rows=rows.filter(r=>r.estado===fe);
+  const tb=document.getElementById('tbody-incidencias'),em=document.getElementById('empty-incidencias');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const isA=CU.rol==='admin',isS=CU.rol==='supervisor';
+  tb.innerHTML=rows.map(r=>{
+    const l=lm[r.lineaId],e=em2[r.estacionId];
+    const sc=r.severidad==='Alta'?'bg-red':r.severidad==='Media'?'bg-amber':'bg-green';
+    return`<tr><td class="tsm">${r.horaInicio?new Date(r.horaInicio).toLocaleString('es-GT'):'—'}</td><td><span class="badge bg-blue">${r.tipo||'—'}</span></td><td>${l?lb(l.numero||'?'):'—'}</td><td class="tsm">${e?.nombre||'—'}</td><td><span class="badge ${sc}">${r.severidad||'—'}</span></td><td class="tsm" style="max-width:200px;">${(r.descripcion||'').substring(0,55)}${(r.descripcion||'').length>55?'...':''}</td><td>${eb(r.estado||'activa')}</td><td><div class="ac">${r.estado==='activa'&&(isA||isS)?`<button class="btn btn-success btn-sm" onclick="openModal('cerrar_inc',${r.id})">✔ Cerrar</button>`:''}${isA?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('incidencia',${r.id})">🗑️</button>`:''}</div></td></tr>`;
+  }).join('');
+}
+
+async function renderAlertas(){
+  const rows=await db.alertas.orderBy('id').reverse().toArray();
+  const el=document.getElementById('alertas-list');
+  if(!rows.length){el.innerHTML='<div class="acard ok" style="border-color:#28a745;">✅ No hay alertas registradas.</div>';return;}
+  el.innerHTML=rows.map(r=>{
+    const cls=r.nivel==='Alta'?'alta':'media';
+    const icon=r.nivel==='Alta'?'🔴':'🟡';
+    return`<div class="acard ${r.atendida?'':''+cls}" style="${r.atendida?'opacity:.6':''}"><span style="font-size:18px;">${icon}</span><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${r.descripcion}</div><div class="atime">📦 ${r.modulo} · 🕐 ${r.hora?new Date(r.hora).toLocaleString('es-GT'):'—'}${r.atendida?' · ✔ Atendida por: '+r.atendidaPor:''}</div></div>${r.atendida?'<span class="badge bg-green">✔ Atendida</span>':`<button class="btn btn-ghost btn-sm" onclick="marcarAtendida(${r.id})" style="white-space:nowrap;">✔ Atender</button>`}</div>`;
+  }).join('');
+}
+
+async function renderUsuarios(q=''){
+  let rows=await db.usuarios.toArray();
+  if(q)rows=rows.filter(r=>r.nombre.toLowerCase().includes(q.toLowerCase())||r.username.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-usuarios'),em=document.getElementById('empty-usuarios');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  const rc2={admin:'bg-amber',supervisor:'bg-green',despachador:'bg-blue',piloto:'bg-purple'};
+  tb.innerHTML=rows.map(r=>`<tr><td class="fw7">${r.username}</td><td>${r.nombre}</td><td><span class="badge ${rc2[r.rol]||'bg-gray'}">${RL[r.rol]||r.rol}</span></td><td>${r.intentosFallidos||0}/3</td><td>${r.activo?'<span class="badge bg-green">Activa</span>':'<span class="badge bg-red">Desactivada</span>'}</td><td class="tsm">${r.creadoEn?new Date(r.creadoEn).toLocaleDateString('es-GT'):'—'}</td><td><div class="ac"><button class="btn btn-ghost btn-sm" onclick="openModal('usuario',${r.id})">✏️ Editar</button>${r.username!=='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteRecord('usuario',${r.id})">🗑️</button>`:''}</div></td></tr>`).join('');
+}
+
+async function renderMunicipalidades(q=''){
+  let rows=await db.municipalidades.toArray();
+  if(q)rows=rows.filter(r=>r.nombre.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-municipalidades'),em=document.getElementById('empty-municipalidades');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=rows.map(r=>`<tr><td class="fw7">${r.nombre}</td><td>${r.departamento||'Guatemala'}</td><td class="tsm">${r.zonas||'—'}</td><td><div class="ac"><button class="btn btn-ghost btn-sm" onclick="openModal('municipalidad',${r.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteRecord('municipalidad',${r.id})">🗑️</button></div></td></tr>`).join('');
+}
+
+async function renderParqueos(q=''){
+  let rows=await db.parqueos.toArray();
+  if(q)rows=rows.filter(r=>r.nombre.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('tbody-parqueos'),em=document.getElementById('empty-parqueos');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
+  tb.innerHTML=rows.map(r=>`<tr><td class="fw7">${r.nombre}</td><td class="tsm">${r.ubicacion||'—'}</td><td>${r.capacidad} buses</td><td><div class="ac"><button class="btn btn-ghost btn-sm" onclick="openModal('parqueo',${r.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteRecord('parqueo',${r.id})">🗑️</button></div></td></tr>`).join('');
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function renderDashboard(){
+  const [nl,ne,nb,np,na,nd,nau,ni,nal]=await Promise.all([db.lineas.count(),db.estaciones.count(),db.buses.count(),db.pilotos.count(),db.asignaciones.count(),db.desvios.where('estado').equals('activo').count(),db.ausencias.count(),db.incidencias.where('estado').equals('activa').count(),db.alertas.where('atendida').equals(0).count()]);
+  document.getElementById('dash-stats').innerHTML=[
+    {i:'🛤️',bg:'#e8f0ff',l:'Líneas',v:nl},{i:'🏢',bg:'#e8fff0',l:'Estaciones',v:ne},{i:'🚌',bg:'#fffbe8',l:'Buses',v:nb},
+    {i:'👤',bg:'#f8e8ff',l:'Pilotos',v:np},{i:'📋',bg:'#e8f8ff',l:'Asignaciones',v:na},{i:'🔀',bg:'#fff0e8',l:'Desvíos Activos',v:nd},
+    {i:'⚠️',bg:'#fff0f0',l:'Incidencias Activas',v:ni,c:ni>0},{i:'🔔',bg:'#fefce8',l:'Alertas Pendientes',v:nal,c:nal>0}
+  ].map(s=>`<div class="stat-card"><div class="stat-icon" style="background:${s.bg};">${s.i}</div><div class="stat-label">${s.l}</div><div class="stat-value" style="${s.c?'color:var(--umg-rojo);':''}">${s.v}</div></div>`).join('');
+  const alertas=await db.alertas.where('atendida').equals(0).reverse().limit(5).sortBy('id');
+  const sec=document.getElementById('dash-alerts-sec');
+  let html=alertas.length?alertas.map(a=>`<div class="acard ${a.nivel==='Alta'?'alta':'media'}" style="margin-bottom:8px;"><span>${a.nivel==='Alta'?'🔴':'🟡'}</span><div><div style="font-weight:700;">${a.descripcion}</div><div class="atime">${new Date(a.hora).toLocaleString('es-GT')} · ${a.modulo}</div></div><button class="btn btn-ghost btn-sm" onclick="marcarAtendida(${a.id})" style="white-space:nowrap;">✔</button></div>`).join('')
+    :'<div class="acard ok">✅ Sin alertas activas.</div>';
+  sec.innerHTML=`<div class="sc"><div class="sc-title">🔔 Alertas Activas Recientes</div>${html}</div>`;
+  const buses=await db.buses.toArray();const lineas=await db.lineas.toArray();const lm=Object.fromEntries(lineas.map(l=>[l.id,l]));
+  const bot=document.getElementById('dash-bottom');bot.innerHTML='';
+  buses.filter(b=>b.capacidadMax&&(b.pasajerosActuales/b.capacidadMax)>=1.5).forEach(b=>{const l=lm[b.lineaId];bot.innerHTML+=`<div class="acard alta" style="grid-column:1/-1;">🚨 <strong>${b.placa}</strong> supera el 50% de su capacidad (${b.pasajerosActuales}/${b.capacidadMax} pax)${l?' en '+l.nombre:''}.</div>`;});
+  buses.filter(b=>b.capacidadMax&&(b.pasajerosActuales/b.capacidadMax)<0.25).forEach(b=>{const pct=Math.round((b.pasajerosActuales/b.capacidadMax)*100);const l=lm[b.lineaId];bot.innerHTML+=`<div class="stat-card"><div class="stat-icon" style="background:var(--warn-bg);">⏳</div><div class="stat-label">Espera 5 min</div><div style="font-size:14px;font-weight:700;">${b.placa}</div><div class="tsm">${l?.nombre||'Sin línea'} · ${pct}% cap.</div></div>`;});
+}
+
+// ============================================================
+// SEED DATA
+// ============================================================
+async function seedIfEmpty(){
+  if(await db.usuarios.count()>0)return;
+  await db.usuarios.bulkAdd([
+    {username:'admin',       password:'admin123',nombre:'Administrador General',   rol:'admin',       activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+    {username:'supervisor1', password:'sup123',  nombre:'Marta López Ruiz',       rol:'supervisor',  activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+    {username:'despachador1',password:'des123',  nombre:'Jorge Ramírez García',   rol:'despachador', activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+    {username:'piloto1',     password:'pil123',  nombre:'Carlos Méndez López',    rol:'piloto',      activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+  ]);
+  const mids=await db.municipalidades.bulkAdd([{nombre:'Guatemala',departamento:'Guatemala',zonas:'Zona 1 al 15, 17, 18, 21'},{nombre:'Villa Nueva',departamento:'Guatemala',zonas:'Zona 12 (Centra Sur)'},{nombre:'Mixco',departamento:'Guatemala',zonas:'Colindante Zona 7'}],{allKeys:true});
+  const pids=await db.parqueos.bulkAdd([{nombre:'Patio Centra Sur',ubicacion:'Calzada Aguilar Batres, Villa Nueva',capacidad:80},{nombre:'Patio Centra Atlántida',ubicacion:'Colonia Atlántida, Zona 18',capacidad:45},{nombre:'Patio La Pedrera',ubicacion:'Colonia La Pedrera, Zona 6',capacidad:35},{nombre:'Patio USAC',ubicacion:'Universidad San Carlos, Zona 12',capacidad:30}],{allKeys:true});
+  const lids=await db.lineas.bulkAdd([
+    {numero:'1', nombre:'Línea 1 — Centro Histórico',        origen:'San Sebastián, Zona 1',      destino:'Tipografía, Zona 1',         zonas:'Zona 1',            distanciaKm:4,    horarioLV:'5:00 a.m. – 8:30 p.m.', horarioFDS:'6:30 a.m. – 7:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'2', nombre:'Línea 2 — Hipódromo del Norte',     origen:'San Sebastián, Zona 1',      destino:'Hipódromo del Norte, Zona 2',zonas:'Zona 1, Zona 2',    distanciaKm:4,    horarioLV:'5:30 a.m. – 7:45 p.m.', horarioFDS:'5:30 a.m. – 7:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'5', nombre:'Línea 5 — Verde Eléctrica',         origen:'Parque Colón, Zona 1',       destino:'Penitenciaria, Zona 5',      zonas:'Zona 1, Zona 5',    distanciaKm:6,    horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'5:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'6', nombre:'Línea 6 — Norte La Pedrera',        origen:'Centra La Pedrera, Zona 6',  destino:'Plaza Barrios, Zona 1',      zonas:'Zona 1, Zona 6',    distanciaKm:9,    horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'6:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'7', nombre:'Línea 7 — Periférico / USAC',       origen:'La Merced, Zona 1',          destino:'USAC Periférico, Zona 12',   zonas:'Zona 1, 7, 11, 12', distanciaKm:23,   horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'5:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'12',nombre:'Línea 12 — Eje Sur (BRT)',          origen:'Plaza Barrios, Zona 1',      destino:'Centra Sur, Villa Nueva',    zonas:'Zona 1, 4, 12',     distanciaKm:13.5, horarioLV:'4:30 a.m. – 10:00 p.m.',horarioFDS:'4:30 a.m. – 9:00 p.m.',tipoServicio:'brt',  estado:'activa',      municipalidadId:mids[0]},
+    {numero:'13',nombre:'Línea 13 — Corredor Central (BRT)', origen:'Plaza Berlín, Zona 13',      destino:'Plaza Barrios, Zona 1',      zonas:'Zona 1, 4, 9, 13',  distanciaKm:11,   horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'5:00 a.m. – 8:00 p.m.',tipoServicio:'brt',  estado:'activa',      municipalidadId:mids[0]},
+    {numero:'17',nombre:'Línea 17 — Alimentadora Zona 17',   origen:'Centra Atlántida, Zona 18',  destino:'Lomas del Norte, Zona 17',   zonas:'Zona 17, Zona 18',  distanciaKm:7,    horarioLV:'5:00 a.m. – 7:00 p.m.', horarioFDS:'6:00 a.m. – 6:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'18',nombre:'Línea 18 — Atlántida / Zona 18',    origen:'FEGUA / Plaza Barrios, Z.1', destino:'Centra Atlántida, Zona 18',  zonas:'Zona 1, 5, 6, 18',  distanciaKm:12,   horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'6:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'21',nombre:'Línea 21 — Nimajuyú / Trébol',      origen:'Nimajuyú, Zona 21',          destino:'Trébol, Zona 12',            zonas:'Zona 12, Zona 21',  distanciaKm:8,    horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'6:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'mantenimiento',municipalidadId:mids[0]},
+  ],{allKeys:true});
+  const eids=await db.estaciones.bulkAdd([
+    {nombre:'Plaza Barrios / FEGUA',   zona:'Zona 1',             municipalidadId:mids[0],lineas:'L12, L13, L18',   accesos:4,guardias:5,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'El Calvario',             zona:'Zona 1',             municipalidadId:mids[0],lineas:'L12, L13',        accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Centro Cívico',           zona:'Zona 1',             municipalidadId:mids[0],lineas:'L12',             accesos:3,guardias:3,esTransbordo:'no',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Trébol',                  zona:'Zona 12',            municipalidadId:mids[0],lineas:'L12, L21',        accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Centra Sur',              zona:'Villa Nueva (Z.12)', municipalidadId:mids[1],lineas:'L12',             accesos:5,guardias:6,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Plaza Berlín / Hangares', zona:'Zona 13',            municipalidadId:mids[0],lineas:'L13',             accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Torre del Reformador',    zona:'Zona 9',             municipalidadId:mids[0],lineas:'L13',             accesos:2,guardias:2,esTransbordo:'no',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'San Sebastián',           zona:'Zona 1',             municipalidadId:mids[0],lineas:'L1, L2',          accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Hipódromo del Norte',     zona:'Zona 2',             municipalidadId:mids[0],lineas:'L2',              accesos:2,guardias:2,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Centra La Pedrera',       zona:'Zona 6',             municipalidadId:mids[0],lineas:'L6',              accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Parque Colón',            zona:'Zona 1',             municipalidadId:mids[0],lineas:'L5, L6, L7, L18', accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'USAC Periférico',         zona:'Zona 12',            municipalidadId:mids[0],lineas:'L7',              accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Centra Atlántida',        zona:'Zona 18',            municipalidadId:mids[0],lineas:'L17, L18',        accesos:4,guardias:4,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Estación Penitenciaria',  zona:'Zona 5',             municipalidadId:mids[0],lineas:'L5',              accesos:2,guardias:2,esTransbordo:'no',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Nimajuyú',                zona:'Zona 21',            municipalidadId:mids[0],lineas:'L21',             accesos:2,guardias:2,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+  ],{allKeys:true});
+  const bids=await db.buses.bulkAdd([
+    {placa:'TM-001-GT',tipo:'articulado',  lineaId:lids[5],capacidadMax:160,pasajerosActuales:35, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-002-GT',tipo:'articulado',  lineaId:lids[5],capacidadMax:160,pasajerosActuales:148,estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-003-GT',tipo:'biarticulado',lineaId:lids[5],capacidadMax:230,pasajerosActuales:12, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-004-GT',tipo:'articulado',  lineaId:lids[6],capacidadMax:160,pasajerosActuales:95, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-005-GT',tipo:'convencional',lineaId:lids[6],capacidadMax:119,pasajerosActuales:60, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-006-GT',tipo:'articulado',  lineaId:lids[8],capacidadMax:160,pasajerosActuales:130,estadoBus:'operativo',     parqueoId:pids[1]},
+    {placa:'TM-007-GT',tipo:'articulado',  lineaId:lids[3],capacidadMax:160,pasajerosActuales:18, estadoBus:'operativo',     parqueoId:pids[2]},
+    {placa:'TM-008-GT',tipo:'articulado',  lineaId:lids[4],capacidadMax:160,pasajerosActuales:280,estadoBus:'operativo',     parqueoId:pids[3]},
+    {placa:'TM-009-GT',tipo:'electrico',   lineaId:lids[2],capacidadMax:119,pasajerosActuales:80, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-010-GT',tipo:'convencional',lineaId:lids[0],capacidadMax:119,pasajerosActuales:8,  estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-011-GT',tipo:'articulado',  lineaId:null,   capacidadMax:160,pasajerosActuales:0,  estadoBus:'mantenimiento', parqueoId:pids[2]},
+    {placa:'TM-012-GT',tipo:'convencional',lineaId:null,   capacidadMax:119,pasajerosActuales:0,  estadoBus:'fuera_servicio',parqueoId:pids[1]},
+  ],{allKeys:true});
+  const pils=await db.pilotos.bulkAdd([
+    {nombre:'Carlos Méndez López',    dpi:'1234567890101',telefono:'5544-3322',licencia:'GT-001122',tipoLicencia:'C',direccion:'Col. La Verbena, Zona 7', nivelEducativo:'diversificado',turno:'mañana',busId:bids[0], estadoLaboral:'activo'},
+    {nombre:'Ana García Pérez',       dpi:'9876543210101',telefono:'4433-2211',licencia:'GT-002233',tipoLicencia:'C',direccion:'Col. El Bosque, Zona 6', nivelEducativo:'universitario', turno:'mañana',busId:bids[1], estadoLaboral:'activo'},
+    {nombre:'Roberto Juárez Pellecer',dpi:'1122334455667',telefono:'3322-1100',licencia:'GT-003344',tipoLicencia:'C',direccion:'Villa Nueva, Km 14',      nivelEducativo:'diversificado',turno:'tarde', busId:bids[2], estadoLaboral:'activo'},
+    {nombre:'María José Solís',       dpi:'7788990011223',telefono:'5511-2233',licencia:'GT-004455',tipoLicencia:'C',direccion:'Mixco, Col. Monte María', nivelEducativo:'universitario', turno:'tarde', busId:bids[3], estadoLaboral:'activo'},
+    {nombre:'Héctor Lima Recinos',    dpi:'4455667788990',telefono:'4422-3344',licencia:'GT-005566',tipoLicencia:'C',direccion:'Zona 18, Col. Atlántida', nivelEducativo:'diversificado',turno:'noche', busId:bids[4], estadoLaboral:'activo'},
+    {nombre:'Patricia Orozco Valle',  dpi:'3344556677889',telefono:'3311-4455',licencia:'GT-006677',tipoLicencia:'B',direccion:'Zona 6, Col. La Pedrera', nivelEducativo:'diversificado',turno:'mañana',busId:bids[5], estadoLaboral:'activo'},
+    {nombre:'Luis Fernando Castillo', dpi:'2233445566778',telefono:'2200-3311',licencia:'GT-007788',tipoLicencia:'C',direccion:'Zona 12, Fin de Línea',   nivelEducativo:'diversificado',turno:'tarde', busId:bids[6], estadoLaboral:'activo'},
+    {nombre:'Sandra Pérez Godínez',   dpi:'6677889900112',telefono:'6655-7788',licencia:'GT-008899',tipoLicencia:'C',direccion:'Zona 5, Centro',          nivelEducativo:'universitario', turno:'noche', busId:null,    estadoLaboral:'inactivo'},
+  ],{allKeys:true});
+  const hoy=new Date().toISOString().split('T')[0];
+  await db.asignaciones.bulkAdd([
+    {lineaId:lids[5],busId:bids[0],pilotoId:pils[0],turno:'mañana',fecha:hoy,estado:'activa',    creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+    {lineaId:lids[5],busId:bids[1],pilotoId:pils[1],turno:'mañana',fecha:hoy,estado:'activa',    creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+    {lineaId:lids[6],busId:bids[3],pilotoId:pils[3],turno:'tarde', fecha:hoy,estado:'activa',    creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+    {lineaId:lids[8],busId:bids[5],pilotoId:pils[5],turno:'noche', fecha:hoy,estado:'completada',creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+  ]);
+  await db.desvios.bulkAdd([
+    {lineaId:lids[0],tipo:'desvio',motivo:'Procesión religiosa en Centro Histórico',estacionesAfectadas:'San Sebastián, Tipografía',horaInicio:new Date(Date.now()-7200000).toISOString(),duracionEstimada:'3 horas',estado:'activo',registradoPor:'supervisor1',registradoEn:new Date().toISOString()},
+    {lineaId:lids[4],tipo:'suspension_parcial',motivo:'Accidente en Anillo Periférico',estacionesAfectadas:'La Merced, USAC Periférico',horaInicio:new Date(Date.now()-86400000).toISOString(),duracionEstimada:'2 horas',estado:'finalizado',horaFin:new Date(Date.now()-79200000).toISOString(),observaciones:'Normalizado luego de retirar vehículo accidentado.',finalizadoPor:'supervisor1',registradoPor:'supervisor1',registradoEn:new Date().toISOString()},
+  ]);
+  await db.ausencias.bulkAdd([
+    {pilotoId:pils[7],turno:'noche',fecha:hoy,motivo:'Enfermedad',lineaId:lids[8],reemplazoId:null,registradoPor:'despachador1',atendida:0},
+  ]);
+  await db.incidencias.bulkAdd([
+    {tipo:'aglomeracion',lineaId:lids[5],estacionId:eids[0],severidad:'Alta',descripcion:'Aglomeración masiva en Plaza Barrios por evento en el Centro Histórico. Esperas mayores a 20 minutos.',horaInicio:new Date(Date.now()-3600000).toISOString(),estado:'activa',creadoPor:'supervisor1'},
+    {tipo:'falla_mecanica',lineaId:lids[4],estacionId:eids[11],severidad:'Media',descripcion:'Bus TM-008-GT reporta falla en sistema de puertas delanteras. Operando con restricción.',horaInicio:new Date(Date.now()-7200000).toISOString(),estado:'activa',creadoPor:'supervisor1'},
+    {tipo:'desvio',lineaId:lids[0],estacionId:eids[7],severidad:'Media',descripcion:'Desvío temporal en Línea 1 por procesión religiosa en Zona 1.',horaInicio:new Date(Date.now()-86400000).toISOString(),estado:'cerrada',accionTomada:'Ruta alterna establecida. Normalizado a las 6pm.',horaResolucion:new Date(Date.now()-72000000).toISOString(),cerradoPor:'supervisor1',creadoPor:'supervisor1'},
+  ]);
+  await db.alertas.bulkAdd([
+    {tipo:'capacidad_alta',descripcion:'Bus TM-008-GT supera el 50% de su capacidad (280/160 pax) en Línea 7.',nivel:'Alta',modulo:'Buses',hora:new Date(Date.now()-1800000).toISOString(),atendida:0},
+    {tipo:'incidencia_alta',descripcion:'Incidencia ALTA: Aglomeración masiva en Plaza Barrios.',nivel:'Alta',modulo:'Incidencias',hora:new Date(Date.now()-3600000).toISOString(),atendida:0},
+    {tipo:'ausencia_piloto',descripcion:'Piloto Sandra Pérez Godínez ausente (Enfermedad) en turno noche. Sin reemplazo asignado.',nivel:'Alta',modulo:'Ausencias',hora:new Date(Date.now()-7200000).toISOString(),atendida:0},
+    {tipo:'desvio',descripcion:'Desvío registrado en Línea 1 — Centro Histórico: Procesión religiosa.',nivel:'Media',modulo:'Desvíos',hora:new Date(Date.now()-7200000).toISOString(),atendida:0},
+    {tipo:'linea_estado',descripcion:'Línea 21 — Nimajuyú / Trébol cambió a estado: mantenimiento.',nivel:'Media',modulo:'Líneas',hora:new Date(Date.now()-10800000).toISOString(),atendida:0},
+  ]);
+}
+
+async function init(){await seedIfEmpty();await updateCounts();}
+init();
+
+
+// ============================================================
+// REPORTES - Modulo de generacion de reportes TXT
+// ============================================================
+function sepL(c,n){c=c||'-';n=n||70;var s='';for(var i=0;i<n;i++)s+=c;return s;}
+function pad(label,value){var l=String(label);var v=String(value||'N/A');while(l.length<30)l+='.';return l+' '+v;}
+function nl(){return '\n';}
+
+async function generarReporte(tipo) {
+  var now = new Date();
+  var fechaHora = now.toLocaleString('es-GT');
+  var fecha = now.toLocaleDateString('es-GT');
+  var c = '';
+
+  var lineas       = await db.lineas.toArray();
+  var estaciones   = await db.estaciones.toArray();
+  var buses        = await db.buses.toArray();
+  var pilotos      = await db.pilotos.toArray();
+  var asignaciones = await db.asignaciones.toArray();
+  var incidencias  = await db.incidencias.toArray();
+  var desvios      = await db.desvios.toArray();
+  var ausencias    = await db.ausencias.toArray();
+  var alertas      = await db.alertas.toArray();
+
+  var lm={},bm={},pm={},em2={};
+  lineas.forEach(function(l){lm[l.id]=l;});
+  buses.forEach(function(b){bm[b.id]=b;});
+  pilotos.forEach(function(p){pm[p.id]=p;});
+  estaciones.forEach(function(e){em2[e.id]=e;});
+
+  var eq = sepL('=',70);
+  var ed = sepL('-',70);
+
+  var header = eq+nl()+
+    '  SOLUTIONS-IQ -- SISTEMA DE CONTROL TRANSMETRO GT'+nl()+
+    '  Universidad Mariano Galvez de Guatemala'+nl()+
+    '  Facultad de Ingenieria en Sistemas de Informacion'+nl()+
+    eq+nl()+
+    '  Generado por : '+CU.nombre+' ('+CU.rol+')'+nl()+
+    '  Fecha y hora : '+fechaHora+nl()+
+    '  Sistema      : SOLUTIONS-IQ v1.0'+nl()+
+    eq+nl();
+
+  if (tipo === 'completo') {
+    c = header;
+    c += nl()+'  REPORTE COMPLETO DEL SISTEMA'+nl()+eq+nl();
+
+    c += nl()+ed+nl()+'  RESUMEN EJECUTIVO'+nl()+ed+nl();
+    c += pad('Total de Lineas', lineas.length)+nl();
+    c += pad('Lineas Activas', lineas.filter(function(l){return l.estado==='activa';}).length)+nl();
+    c += pad('Lineas en Mantenimiento', lineas.filter(function(l){return l.estado==='mantenimiento';}).length)+nl();
+    c += pad('Total de Estaciones', estaciones.length)+nl();
+    c += pad('Total de Buses', buses.length)+nl();
+    c += pad('Buses Operativos', buses.filter(function(b){return b.estadoBus==='operativo';}).length)+nl();
+    c += pad('Buses en Mantenimiento', buses.filter(function(b){return b.estadoBus==='mantenimiento';}).length)+nl();
+    c += pad('Buses Fuera de Servicio', buses.filter(function(b){return b.estadoBus==='fuera_servicio';}).length)+nl();
+    c += pad('Total de Pilotos', pilotos.length)+nl();
+    c += pad('Pilotos Activos', pilotos.filter(function(p){return p.estadoLaboral==='activo';}).length)+nl();
+    c += pad('Total Asignaciones', asignaciones.length)+nl();
+    c += pad('Asignaciones Activas', asignaciones.filter(function(a){return a.estado==='activa';}).length)+nl();
+    c += pad('Incidencias Activas', incidencias.filter(function(i){return i.estado==='activa';}).length)+nl();
+    c += pad('Incidencias Cerradas', incidencias.filter(function(i){return i.estado==='cerrada';}).length)+nl();
+    c += pad('Desvios Activos', desvios.filter(function(d){return d.estado==='activo';}).length)+nl();
+    c += pad('Alertas Pendientes', alertas.filter(function(a){return !a.atendida;}).length)+nl();
+
+    c += nl()+ed+nl()+'  DETALLE DE LINEAS'+nl()+ed+nl();
+    lineas.forEach(function(l){
+      var busesLinea = buses.filter(function(b){return b.lineaId===l.id;});
+      c += nl()+'  [L'+l.numero+'] '+l.nombre+nl();
+      c += '    Origen    : '+(l.origen||'N/A')+nl();
+      c += '    Destino   : '+(l.destino||'N/A')+nl();
+      c += '    Zonas     : '+(l.zonas||'N/A')+nl();
+      c += '    Distancia : '+(l.distanciaKm||0)+' km'+nl();
+      c += '    Tipo      : '+(l.tipoServicio||'N/A')+nl();
+      c += '    Estado    : '+(l.estado||'N/A')+nl();
+      c += '    Horario LV: '+(l.horarioLV||'N/A')+nl();
+      c += '    Horario FDS: '+(l.horarioFDS||'N/A')+nl();
+      c += '    Buses asignados: '+busesLinea.length+' ('+busesLinea.map(function(b){return b.placa;}).join(', ')+')'  +nl();
+    });
+
+    c += nl()+ed+nl()+'  DETALLE DE ESTACIONES'+nl()+ed+nl();
+    estaciones.forEach(function(e){
+      c += nl()+'  '+e.nombre+' -- '+( e.zona||'N/A')+nl();
+      c += '    Lineas    : '+(e.lineas||'N/A')+nl();
+      c += '    Accesos   : '+(e.accesos||1)+nl();
+      c += '    Guardias  : '+(e.guardias||1)+nl();
+      c += '    Transbordo: '+(e.esTransbordo==='si'?'Si':'No')+nl();
+      c += '    Parqueo   : '+(e.tieneParqueo==='si'?'Si':'No')+nl();
+      c += '    Estado    : '+(e.estadoOperativo||'operativa')+nl();
+    });
+
+    c += nl()+ed+nl()+'  DETALLE DE FLOTA DE BUSES'+nl()+ed+nl();
+    buses.forEach(function(b){
+      var l = lm[b.lineaId];
+      var pct = b.capacidadMax ? Math.round((b.pasajerosActuales/b.capacidadMax)*100) : 0;
+      var asigB = asignaciones.filter(function(a){return a.busId===b.id;});
+      c += nl()+'  '+b.placa+' -- '+(b.tipo||'N/A')+nl();
+      c += '    Linea Asignada: '+(l?'L'+l.numero+' '+l.nombre:'Sin asignar')+nl();
+      c += '    Capacidad Max : '+b.capacidadMax+' pasajeros'+nl();
+      c += '    Pasajeros Act.: '+b.pasajerosActuales+' ('+pct+'%)'+nl();
+      c += '    Estado        : '+(b.estadoBus||'N/A')+nl();
+      c += '    Asignaciones  : '+asigB.length+' historicas'+nl();
+      if (pct >= 150) c += '    [ALERTA] Bus supera el 50% de su capacidad'+nl();
+      if (pct < 25 && b.estadoBus==='operativo') c += '    [NOTA] Bus con baja ocupacion, aplicar espera de 5 min'+nl();
+    });
+
+    c += nl()+ed+nl()+'  DETALLE DE PILOTOS'+nl()+ed+nl();
+    pilotos.forEach(function(p){
+      var bus = bm[p.busId];
+      var asigP = asignaciones.filter(function(a){return a.pilotoId===p.id;});
+      var ausP = ausencias.filter(function(a){return a.pilotoId===p.id;});
+      c += nl()+'  '+p.nombre+nl();
+      c += '    DPI           : '+(p.dpi||'N/A')+nl();
+      c += '    Licencia      : '+(p.licencia||'N/A')+' Tipo '+(p.tipoLicencia||'N/A')+nl();
+      c += '    Telefono      : '+(p.telefono||'N/A')+nl();
+      c += '    Turno         : '+(p.turno||'N/A')+nl();
+      c += '    Educacion     : '+(p.nivelEducativo||'N/A')+nl();
+      c += '    Bus Asignado  : '+(bus?bus.placa:'Sin asignar')+nl();
+      c += '    Estado        : '+(p.estadoLaboral||'N/A')+nl();
+      c += '    Asignaciones  : '+asigP.length+nl();
+      c += '    Ausencias     : '+ausP.length+nl();
+    });
+
+    c += nl()+ed+nl()+'  HISTORIAL DE ASIGNACIONES'+nl()+ed+nl();
+    asignaciones.forEach(function(a){
+      var l=lm[a.lineaId],b=bm[a.busId],p=pm[a.pilotoId];
+      c += nl()+'  Fecha: '+(a.fecha||'N/A')+' | Turno: '+(a.turno||'N/A')+nl();
+      c += '    Linea  : '+(l?'L'+l.numero+' '+l.nombre:'N/A')+nl();
+      c += '    Bus    : '+(b?b.placa:'N/A')+nl();
+      c += '    Piloto : '+(p?p.nombre:'N/A')+nl();
+      c += '    Estado : '+(a.estado||'N/A')+nl();
+      c += '    Creado por: '+(a.creadoPor||'N/A')+nl();
+      var cambios = a.cambios||[];
+      if (cambios.length > 0) {
+        c += '    Cambios de turno ('+cambios.length+'):'+nl();
+        cambios.forEach(function(cm){
+          c += '      - '+cm.tipo+': '+cm.motivo+' ('+new Date(cm.hora).toLocaleString('es-GT')+')'+nl();
+        });
+      }
+    });
+
+    c += nl()+ed+nl()+'  HISTORIAL DE INCIDENCIAS'+nl()+ed+nl();
+    incidencias.forEach(function(i){
+      var l=lm[i.lineaId],e=em2[i.estacionId];
+      c += nl()+'  ['+i.severidad+'] '+(i.tipo||'N/A')+' -- Estado: '+(i.estado||'N/A')+nl();
+      c += '    Linea     : '+(l?'L'+l.numero+' '+l.nombre:'N/A')+nl();
+      c += '    Estacion  : '+(e?e.nombre:'N/A')+nl();
+      c += '    Descripcion: '+(i.descripcion||'N/A')+nl();
+      c += '    Inicio    : '+(i.horaInicio?new Date(i.horaInicio).toLocaleString('es-GT'):'N/A')+nl();
+      if (i.estado==='cerrada'){
+        c += '    Accion    : '+(i.accionTomada||'N/A')+nl();
+        c += '    Cerrado por: '+(i.cerradoPor||'N/A')+nl();
+      }
+    });
+
+    c += nl()+ed+nl()+'  HISTORIAL DE DESVIOS'+nl()+ed+nl();
+    desvios.forEach(function(d){
+      var l=lm[d.lineaId];
+      c += nl()+'  ['+d.estado+'] '+(d.tipo||'N/A')+nl();
+      c += '    Linea    : '+(l?'L'+l.numero+' '+l.nombre:'N/A')+nl();
+      c += '    Motivo   : '+(d.motivo||'N/A')+nl();
+      c += '    Afectadas: '+(d.estacionesAfectadas||'N/A')+nl();
+      c += '    Duracion : '+(d.duracionEstimada||'N/A')+nl();
+      if (d.observaciones) c += '    Notas    : '+d.observaciones+nl();
+    });
+
+    c += nl()+ed+nl()+'  RECOMENDACIONES PARA MEJORAS'+nl()+ed+nl();
+    var busAlerta = buses.filter(function(b){return b.capacidadMax&&(b.pasajerosActuales/b.capacidadMax)>=1.5;});
+    var busBajo   = buses.filter(function(b){return b.capacidadMax&&(b.pasajerosActuales/b.capacidadMax)<0.25&&b.estadoBus==='operativo';});
+    var incAlt    = incidencias.filter(function(i){return i.severidad==='Alta';});
+    var sinReemp  = ausencias.filter(function(a){return !a.reemplazoId;});
+    if (busAlerta.length) c += nl()+'  [!] '+busAlerta.length+' bus(es) con sobrecarga de pasajeros (>50% capacidad):'+nl()+'     '+busAlerta.map(function(b){return b.placa;}).join(', ')+nl()+'     -> Recomendacion: Agregar unidades en esas lineas.'+nl();
+    if (busBajo.length)   c += nl()+'  [i] '+busBajo.length+' bus(es) con baja ocupacion (<25%):'+nl()+'     '+busBajo.map(function(b){return b.placa;}).join(', ')+nl()+'     -> Recomendacion: Aplicar politica de espera de 5 min o reasignar.'+nl();
+    if (incAlt.length)    c += nl()+'  [!] '+incAlt.length+' incidencia(s) de severidad Alta registradas.'+nl()+'     -> Recomendacion: Revisar estaciones con mayor frecuencia de incidentes.'+nl();
+    if (sinReemp.length)  c += nl()+'  [!] '+sinReemp.length+' ausencia(s) sin reemplazo asignado.'+nl()+'     -> Recomendacion: Mantener lista de pilotos de reserva por turno.'+nl();
+    var devActivos = desvios.filter(function(d){return d.estado==='activo';});
+    if (devActivos.length) c += nl()+'  [!] Hay desvios activos en el sistema.'+nl()+'     -> Recomendacion: Notificar a usuarios a traves de canales oficiales.'+nl();
+
+    c += nl()+eq+nl()+'  FIN DEL REPORTE COMPLETO'+nl()+'  SOLUTIONS-IQ -- Universidad Mariano Galvez de Guatemala'+nl()+eq+nl();
+
+  } else if (tipo === 'operativo') {
+    c = header;
+    c += nl()+'  REPORTE OPERATIVO DIARIO -- '+fecha+nl()+eq+nl();
+    c += nl()+ed+nl()+'  ESTADO ACTUAL DE LINEAS'+nl()+ed+nl();
+    lineas.forEach(function(l){
+      var num = ('L'+l.numero+'   ').slice(0,6);
+      c += '  '+num+' '+(l.nombre+'                                        ').slice(0,42)+' ['+l.estado+']'+nl();
+    });
+    c += nl()+ed+nl()+'  ASIGNACIONES ACTIVAS HOY'+nl()+ed+nl();
+    var hoy = new Date().toISOString().split('T')[0];
+    var asigHoy = asignaciones.filter(function(a){return a.fecha===hoy&&a.estado==='activa';});
+    if (!asigHoy.length) { c += '  Sin asignaciones activas hoy.'+nl(); }
+    asigHoy.forEach(function(a){
+      var l=lm[a.lineaId],b=bm[a.busId],p=pm[a.pilotoId];
+      c += '  Turno '+(a.turno||'N/A')+' | '+(l?'L'+l.numero+' '+l.nombre:'N/A')+' | Bus: '+(b?b.placa:'N/A')+' | Piloto: '+(p?p.nombre:'N/A')+nl();
+    });
+    c += nl()+ed+nl()+'  INCIDENCIAS ACTIVAS'+nl()+ed+nl();
+    var incActivas = incidencias.filter(function(i){return i.estado==='activa';});
+    if (!incActivas.length) { c += '  Sin incidencias activas.'+nl(); }
+    incActivas.forEach(function(i){
+      var l=lm[i.lineaId];
+      c += '  ['+i.severidad+'] '+(i.tipo||'N/A')+' -- '+(l?'L'+l.numero:'N/A')+': '+((i.descripcion||'N/A').substring(0,50))+nl();
+    });
+    c += nl()+ed+nl()+'  ALERTAS PENDIENTES'+nl()+ed+nl();
+    var alPend = alertas.filter(function(a){return !a.atendida;});
+    if (!alPend.length) { c += '  Sin alertas pendientes.'+nl(); }
+    alPend.forEach(function(a){c += '  ['+a.nivel+'] '+((a.descripcion||'N/A').substring(0,60))+nl();});
+    c += nl()+eq+nl()+'  FIN DEL REPORTE OPERATIVO'+nl()+eq+nl();
+
+  } else if (tipo === 'incidencias') {
+    c = header;
+    c += nl()+'  REPORTE DE INCIDENCIAS Y DESVIOS'+nl()+eq+nl();
+    c += nl()+ed+nl()+'  RESUMEN'+nl()+ed+nl();
+    c += pad('Total Incidencias', incidencias.length)+nl();
+    c += pad('Incidencias Activas', incidencias.filter(function(i){return i.estado==='activa';}).length)+nl();
+    c += pad('Incidencias Cerradas', incidencias.filter(function(i){return i.estado==='cerrada';}).length)+nl();
+    c += pad('Severidad Alta', incidencias.filter(function(i){return i.severidad==='Alta';}).length)+nl();
+    c += pad('Severidad Media', incidencias.filter(function(i){return i.severidad==='Media';}).length)+nl();
+    c += pad('Severidad Baja', incidencias.filter(function(i){return i.severidad==='Baja';}).length)+nl();
+    c += pad('Total Desvios', desvios.length)+nl();
+    c += pad('Desvios Activos', desvios.filter(function(d){return d.estado==='activo';}).length)+nl();
+    c += nl()+ed+nl()+'  LINEAS CON MAS INCIDENCIAS'+nl()+ed+nl();
+    var porLinea={};
+    incidencias.forEach(function(i){if(i.lineaId){porLinea[i.lineaId]=(porLinea[i.lineaId]||0)+1;}});
+    Object.entries(porLinea).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){
+      var l=lm[e[0]];c += '  '+e[1]+' incidencia(s) -- '+(l?'L'+l.numero+' '+l.nombre:'Linea '+e[0])+nl();
+    });
+    c += nl()+ed+nl()+'  DETALLE DE INCIDENCIAS'+nl()+ed+nl();
+    incidencias.forEach(function(i){
+      var l=lm[i.lineaId],e=em2[i.estacionId];
+      c += nl()+'  ['+i.severidad+'] '+(i.tipo||'N/A')+' | Estado: '+(i.estado||'N/A')+nl();
+      c += '    Linea     : '+(l?'L'+l.numero+' '+l.nombre:'N/A')+nl();
+      c += '    Estacion  : '+(e?e.nombre:'N/A')+nl();
+      c += '    Descripcion: '+(i.descripcion||'N/A')+nl();
+      c += '    Inicio    : '+(i.horaInicio?new Date(i.horaInicio).toLocaleString('es-GT'):'N/A')+nl();
+      if (i.estado==='cerrada'){c += '    Accion    : '+(i.accionTomada||'N/A')+nl();c += '    Cerrado por: '+(i.cerradoPor||'N/A')+nl();}
+    });
+    c += nl()+ed+nl()+'  DETALLE DE DESVIOS'+nl()+ed+nl();
+    desvios.forEach(function(d){
+      var l=lm[d.lineaId];
+      c += nl()+'  ['+d.estado+'] '+(d.tipo||'N/A')+' -- '+(l?'L'+l.numero+' '+l.nombre:'N/A')+nl();
+      c += '    Motivo    : '+(d.motivo||'N/A')+nl();
+      c += '    Afectadas : '+(d.estacionesAfectadas||'N/A')+nl();
+      c += '    Duracion  : '+(d.duracionEstimada||'N/A')+nl();
+      if (d.observaciones) c += '    Notas     : '+d.observaciones+nl();
+    });
+    c += nl()+ed+nl()+'  RECOMENDACIONES PARA MEJORAS'+nl()+ed+nl();
+    var tipos2={};
+    incidencias.forEach(function(i){tipos2[i.tipo]=(tipos2[i.tipo]||0)+1;});
+    c += '  Incidencias por tipo:'+nl();
+    Object.entries(tipos2).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){c += '  - '+e[1]+' de tipo "'+e[0]+'"'+nl();});
+    c += nl()+'  Acciones recomendadas:'+nl();
+    if ((tipos2['aglomeracion']||0)>0) c += '  -> Aglomeraciones: Aumentar frecuencia de buses en horas pico.'+nl();
+    if ((tipos2['falla_mecanica']||0)>0) c += '  -> Fallas mecanicas: Revisar programa de mantenimiento preventivo.'+nl();
+    if ((tipos2['seguridad']||0)>0) c += '  -> Seguridad: Reforzar presencia de guardias en estaciones criticas.'+nl();
+    c += nl()+eq+nl()+'  FIN DEL REPORTE DE INCIDENCIAS'+nl()+eq+nl();
+
+  } else if (tipo === 'pilotos') {
+    c = header;
+    c += nl()+'  REPORTE DE PILOTOS Y ASIGNACIONES'+nl()+eq+nl();
+    c += nl()+ed+nl()+'  RESUMEN DE PERSONAL'+nl()+ed+nl();
+    c += pad('Total Pilotos', pilotos.length)+nl();
+    c += pad('Pilotos Activos', pilotos.filter(function(p){return p.estadoLaboral==='activo';}).length)+nl();
+    c += pad('Pilotos Inactivos', pilotos.filter(function(p){return p.estadoLaboral==='inactivo';}).length)+nl();
+    c += pad('Turno Manana', pilotos.filter(function(p){return p.turno==='mañana';}).length)+nl();
+    c += pad('Turno Tarde', pilotos.filter(function(p){return p.turno==='tarde';}).length)+nl();
+    c += pad('Turno Noche', pilotos.filter(function(p){return p.turno==='noche';}).length)+nl();
+    c += pad('Total Ausencias', ausencias.length)+nl();
+    c += pad('Ausencias sin Reemplazo', ausencias.filter(function(a){return !a.reemplazoId;}).length)+nl();
+    c += nl()+ed+nl()+'  DETALLE DE PILOTOS'+nl()+ed+nl();
+    pilotos.forEach(function(p){
+      var bus=bm[p.busId];
+      var asigP=asignaciones.filter(function(a){return a.pilotoId===p.id;});
+      var ausP=ausencias.filter(function(a){return a.pilotoId===p.id;});
+      c += nl()+'  '+p.nombre+' ['+p.estadoLaboral+']'+nl();
+      c += '    DPI       : '+(p.dpi||'N/A')+nl();
+      c += '    Licencia  : '+(p.licencia||'N/A')+' -- Tipo '+(p.tipoLicencia||'N/A')+nl();
+      c += '    Telefono  : '+(p.telefono||'N/A')+nl();
+      c += '    Turno     : '+(p.turno||'N/A')+nl();
+      c += '    Educacion : '+(p.nivelEducativo||'N/A')+nl();
+      c += '    Bus actual: '+(bus?bus.placa:'Sin asignar')+nl();
+      c += '    Asignaciones historicas: '+asigP.length+nl();
+      c += '    Ausencias registradas  : '+ausP.length+nl();
+      ausP.forEach(function(a){c += '      - '+a.fecha+' | '+a.turno+' | '+a.motivo+nl();});
+    });
+    c += nl()+ed+nl()+'  AUSENCIAS REGISTRADAS'+nl()+ed+nl();
+    if (!ausencias.length) { c += '  Sin ausencias registradas.'+nl(); }
+    ausencias.forEach(function(a){
+      var p=pm[a.pilotoId],l=lm[a.lineaId],r=pm[a.reemplazoId];
+      c += nl()+'  '+(p?p.nombre:'N/A')+' -- '+(a.fecha||'N/A')+' | Turno: '+(a.turno||'N/A')+nl();
+      c += '    Motivo    : '+(a.motivo||'N/A')+nl();
+      c += '    Linea     : '+(l?'L'+l.numero+' '+l.nombre:'N/A')+nl();
+      c += '    Reemplazo : '+(r?r.nombre:'SIN REEMPLAZO ASIGNADO')+nl();
+    });
+    c += nl()+eq+nl()+'  FIN DEL REPORTE DE PILOTOS'+nl()+eq+nl();
+
+  } else if (tipo === 'flota') {
+    c = header;
+    c += nl()+'  REPORTE DE FLOTA DE BUSES'+nl()+eq+nl();
+    c += nl()+ed+nl()+'  RESUMEN DE FLOTA'+nl()+ed+nl();
+    c += pad('Total Unidades', buses.length)+nl();
+    c += pad('Operativos', buses.filter(function(b){return b.estadoBus==='operativo';}).length)+nl();
+    c += pad('En Mantenimiento', buses.filter(function(b){return b.estadoBus==='mantenimiento';}).length)+nl();
+    c += pad('Fuera de Servicio', buses.filter(function(b){return b.estadoBus==='fuera_servicio';}).length)+nl();
+    c += pad('Articulados', buses.filter(function(b){return b.tipo==='articulado';}).length)+nl();
+    c += pad('Bi-articulados', buses.filter(function(b){return b.tipo==='biarticulado';}).length)+nl();
+    c += pad('Convencionales', buses.filter(function(b){return b.tipo==='convencional';}).length)+nl();
+    c += pad('Electricos', buses.filter(function(b){return b.tipo==='electrico';}).length)+nl();
+    var totalCap=buses.reduce(function(s,b){return s+(b.capacidadMax||0);},0);
+    var totalPas=buses.reduce(function(s,b){return s+(b.pasajerosActuales||0);},0);
+    var pctTotal=totalCap?Math.round(totalPas/totalCap*100):0;
+    c += pad('Capacidad Total Sistema', totalCap+' pasajeros')+nl();
+    c += pad('Pasajeros Actuales Total', totalPas+' ('+pctTotal+'%)')+nl();
+    c += nl()+ed+nl()+'  DETALLE POR UNIDAD'+nl()+ed+nl();
+    buses.forEach(function(b){
+      var l=lm[b.lineaId];
+      var pct=b.capacidadMax?Math.round((b.pasajerosActuales/b.capacidadMax)*100):0;
+      var asigB=asignaciones.filter(function(a){return a.busId===b.id;});
+      c += nl()+'  '+b.placa+' -- '+(b.tipo||'N/A')+' ['+b.estadoBus+']'+nl();
+      c += '    Linea Actual   : '+(l?'L'+l.numero+' '+l.nombre:'Sin asignar')+nl();
+      c += '    Capacidad      : '+b.capacidadMax+' pax'+nl();
+      c += '    Pasajeros      : '+b.pasajerosActuales+' ('+pct+'%)'+nl();
+      c += '    Asignaciones   : '+asigB.length+' historicas'+nl();
+      if (pct>=150) c += '    [ALERTA] Sobrecarga de pasajeros'+nl();
+      if (b.estadoBus==='mantenimiento') c += '    [!] En mantenimiento - no disponible para despacho'+nl();
+    });
+    c += nl()+eq+nl()+'  FIN DEL REPORTE DE FLOTA'+nl()+eq+nl();
+
+  } else if (tipo === 'alertas') {
+    c = header;
+    c += nl()+'  REPORTE DE ALERTAS Y KPIs'+nl()+eq+nl();
+    c += nl()+ed+nl()+'  RESUMEN DE ALERTAS'+nl()+ed+nl();
+    c += pad('Total Alertas', alertas.length)+nl();
+    c += pad('Nivel ALTA', alertas.filter(function(a){return a.nivel==='Alta';}).length)+nl();
+    c += pad('Nivel MEDIA', alertas.filter(function(a){return a.nivel==='Media';}).length)+nl();
+    c += pad('Atendidas', alertas.filter(function(a){return a.atendida;}).length)+nl();
+    c += pad('Pendientes', alertas.filter(function(a){return !a.atendida;}).length)+nl();
+    var pctAt=alertas.length?Math.round(alertas.filter(function(a){return a.atendida;}).length/alertas.length*100):0;
+    c += pad('Tasa de Atencion', pctAt+'%')+nl();
+    c += nl()+ed+nl()+'  ALERTAS POR MODULO'+nl()+ed+nl();
+    var porMod={};
+    alertas.forEach(function(a){porMod[a.modulo]=(porMod[a.modulo]||0)+1;});
+    Object.entries(porMod).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){c += '  '+e[1]+' alerta(s) del modulo "'+e[0]+'"'+nl();});
+    c += nl()+ed+nl()+'  DETALLE DE ALERTAS'+nl()+ed+nl();
+    alertas.forEach(function(a){
+      c += nl()+'  ['+a.nivel+'] '+(a.tipo||'N/A')+' -- '+(a.modulo||'N/A')+nl();
+      c += '    Descripcion : '+(a.descripcion||'N/A')+nl();
+      c += '    Generada    : '+(a.hora?new Date(a.hora).toLocaleString('es-GT'):'N/A')+nl();
+      c += '    Atendida    : '+(a.atendida?'Si -- por '+(a.atendidaPor||'N/A'):'No')+nl();
+    });
+    c += nl()+ed+nl()+'  KPIs OPERATIVOS'+nl()+ed+nl();
+    c += '  Tasa de atencion de alertas    : '+pctAt+'%'+nl();
+    c += '  Incidencias resueltas          : '+incidencias.filter(function(i){return i.estado==='cerrada';}).length+' de '+incidencias.length+nl();
+    c += '  Desvios finalizados            : '+desvios.filter(function(d){return d.estado==='finalizado';}).length+' de '+desvios.length+nl();
+    c += '  Pilotos activos                : '+pilotos.filter(function(p){return p.estadoLaboral==='activo';}).length+' de '+pilotos.length+nl();
+    c += '  Buses operativos               : '+buses.filter(function(b){return b.estadoBus==='operativo';}).length+' de '+buses.length+nl();
+    c += nl()+eq+nl()+'  FIN DEL REPORTE DE ALERTAS'+nl()+eq+nl();
+  }
+
+  document.getElementById('reporte-preview').textContent = c;
+
+  var nombres = {completo:'reporte_completo',operativo:'reporte_operativo_diario',incidencias:'reporte_incidencias',pilotos:'reporte_pilotos',flota:'reporte_flota',alertas:'reporte_alertas_kpi'};
+  var blob = new Blob([c], {type:'text/plain;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (nombres[tipo]||'reporte')+'_'+new Date().toISOString().split('T')[0]+'.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Reporte descargado correctamente.');
+}
+
+// ============================================================
+// SEED DATA
+// ============================================================
+async function seedIfEmpty(){
+  if(await db.usuarios.count()>0)return;
+  await db.usuarios.bulkAdd([
+    {username:'admin',       password:'admin123',nombre:'Administrador General',   rol:'admin',       activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+    {username:'supervisor1', password:'sup123',  nombre:'Marta López Ruiz',       rol:'supervisor',  activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+    {username:'despachador1',password:'des123',  nombre:'Jorge Ramírez García',   rol:'despachador', activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+    {username:'piloto1',     password:'pil123',  nombre:'Carlos Méndez López',    rol:'piloto',      activo:1,intentosFallidos:0,creadoEn:new Date().toISOString()},
+  ]);
+  const mids=await db.municipalidades.bulkAdd([{nombre:'Guatemala',departamento:'Guatemala',zonas:'Zona 1 al 15, 17, 18, 21'},{nombre:'Villa Nueva',departamento:'Guatemala',zonas:'Zona 12 (Centra Sur)'},{nombre:'Mixco',departamento:'Guatemala',zonas:'Colindante Zona 7'}],{allKeys:true});
+  const pids=await db.parqueos.bulkAdd([{nombre:'Patio Centra Sur',ubicacion:'Calzada Aguilar Batres, Villa Nueva',capacidad:80},{nombre:'Patio Centra Atlántida',ubicacion:'Colonia Atlántida, Zona 18',capacidad:45},{nombre:'Patio La Pedrera',ubicacion:'Colonia La Pedrera, Zona 6',capacidad:35},{nombre:'Patio USAC',ubicacion:'Universidad San Carlos, Zona 12',capacidad:30}],{allKeys:true});
+  const lids=await db.lineas.bulkAdd([
+    {numero:'1', nombre:'Línea 1 — Centro Histórico',        origen:'San Sebastián, Zona 1',      destino:'Tipografía, Zona 1',         zonas:'Zona 1',            distanciaKm:4,    horarioLV:'5:00 a.m. – 8:30 p.m.', horarioFDS:'6:30 a.m. – 7:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'2', nombre:'Línea 2 — Hipódromo del Norte',     origen:'San Sebastián, Zona 1',      destino:'Hipódromo del Norte, Zona 2',zonas:'Zona 1, Zona 2',    distanciaKm:4,    horarioLV:'5:30 a.m. – 7:45 p.m.', horarioFDS:'5:30 a.m. – 7:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'5', nombre:'Línea 5 — Verde Eléctrica',         origen:'Parque Colón, Zona 1',       destino:'Penitenciaria, Zona 5',      zonas:'Zona 1, Zona 5',    distanciaKm:6,    horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'5:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'6', nombre:'Línea 6 — Norte La Pedrera',        origen:'Centra La Pedrera, Zona 6',  destino:'Plaza Barrios, Zona 1',      zonas:'Zona 1, Zona 6',    distanciaKm:9,    horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'6:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'7', nombre:'Línea 7 — Periférico / USAC',       origen:'La Merced, Zona 1',          destino:'USAC Periférico, Zona 12',   zonas:'Zona 1, 7, 11, 12', distanciaKm:23,   horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'5:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'12',nombre:'Línea 12 — Eje Sur (BRT)',          origen:'Plaza Barrios, Zona 1',      destino:'Centra Sur, Villa Nueva',    zonas:'Zona 1, 4, 12',     distanciaKm:13.5, horarioLV:'4:30 a.m. – 10:00 p.m.',horarioFDS:'4:30 a.m. – 9:00 p.m.',tipoServicio:'brt',  estado:'activa',      municipalidadId:mids[0]},
+    {numero:'13',nombre:'Línea 13 — Corredor Central (BRT)', origen:'Plaza Berlín, Zona 13',      destino:'Plaza Barrios, Zona 1',      zonas:'Zona 1, 4, 9, 13',  distanciaKm:11,   horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'5:00 a.m. – 8:00 p.m.',tipoServicio:'brt',  estado:'activa',      municipalidadId:mids[0]},
+    {numero:'17',nombre:'Línea 17 — Alimentadora Zona 17',   origen:'Centra Atlántida, Zona 18',  destino:'Lomas del Norte, Zona 17',   zonas:'Zona 17, Zona 18',  distanciaKm:7,    horarioLV:'5:00 a.m. – 7:00 p.m.', horarioFDS:'6:00 a.m. – 6:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'18',nombre:'Línea 18 — Atlántida / Zona 18',    origen:'FEGUA / Plaza Barrios, Z.1', destino:'Centra Atlántida, Zona 18',  zonas:'Zona 1, 5, 6, 18',  distanciaKm:12,   horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'6:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'activa',      municipalidadId:mids[0]},
+    {numero:'21',nombre:'Línea 21 — Nimajuyú / Trébol',      origen:'Nimajuyú, Zona 21',          destino:'Trébol, Zona 12',            zonas:'Zona 12, Zona 21',  distanciaKm:8,    horarioLV:'5:00 a.m. – 9:00 p.m.', horarioFDS:'6:00 a.m. – 8:00 p.m.',tipoServicio:'mixto',estado:'mantenimiento',municipalidadId:mids[0]},
+  ],{allKeys:true});
+  const eids=await db.estaciones.bulkAdd([
+    {nombre:'Plaza Barrios / FEGUA',   zona:'Zona 1',             municipalidadId:mids[0],lineas:'L12, L13, L18',   accesos:4,guardias:5,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'El Calvario',             zona:'Zona 1',             municipalidadId:mids[0],lineas:'L12, L13',        accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Centro Cívico',           zona:'Zona 1',             municipalidadId:mids[0],lineas:'L12',             accesos:3,guardias:3,esTransbordo:'no',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Trébol',                  zona:'Zona 12',            municipalidadId:mids[0],lineas:'L12, L21',        accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Centra Sur',              zona:'Villa Nueva (Z.12)', municipalidadId:mids[1],lineas:'L12',             accesos:5,guardias:6,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Plaza Berlín / Hangares', zona:'Zona 13',            municipalidadId:mids[0],lineas:'L13',             accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Torre del Reformador',    zona:'Zona 9',             municipalidadId:mids[0],lineas:'L13',             accesos:2,guardias:2,esTransbordo:'no',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'San Sebastián',           zona:'Zona 1',             municipalidadId:mids[0],lineas:'L1, L2',          accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Hipódromo del Norte',     zona:'Zona 2',             municipalidadId:mids[0],lineas:'L2',              accesos:2,guardias:2,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Centra La Pedrera',       zona:'Zona 6',             municipalidadId:mids[0],lineas:'L6',              accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Parque Colón',            zona:'Zona 1',             municipalidadId:mids[0],lineas:'L5, L6, L7, L18', accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'USAC Periférico',         zona:'Zona 12',            municipalidadId:mids[0],lineas:'L7',              accesos:3,guardias:3,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Centra Atlántida',        zona:'Zona 18',            municipalidadId:mids[0],lineas:'L17, L18',        accesos:4,guardias:4,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+    {nombre:'Estación Penitenciaria',  zona:'Zona 5',             municipalidadId:mids[0],lineas:'L5',              accesos:2,guardias:2,esTransbordo:'no',tieneParqueo:'no',estadoOperativo:'operativa'},
+    {nombre:'Nimajuyú',                zona:'Zona 21',            municipalidadId:mids[0],lineas:'L21',             accesos:2,guardias:2,esTransbordo:'si',tieneParqueo:'si',estadoOperativo:'operativa'},
+  ],{allKeys:true});
+  const bids=await db.buses.bulkAdd([
+    {placa:'TM-001-GT',tipo:'articulado',  lineaId:lids[5],capacidadMax:160,pasajerosActuales:35, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-002-GT',tipo:'articulado',  lineaId:lids[5],capacidadMax:160,pasajerosActuales:148,estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-003-GT',tipo:'biarticulado',lineaId:lids[5],capacidadMax:230,pasajerosActuales:12, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-004-GT',tipo:'articulado',  lineaId:lids[6],capacidadMax:160,pasajerosActuales:95, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-005-GT',tipo:'convencional',lineaId:lids[6],capacidadMax:119,pasajerosActuales:60, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-006-GT',tipo:'articulado',  lineaId:lids[8],capacidadMax:160,pasajerosActuales:130,estadoBus:'operativo',     parqueoId:pids[1]},
+    {placa:'TM-007-GT',tipo:'articulado',  lineaId:lids[3],capacidadMax:160,pasajerosActuales:18, estadoBus:'operativo',     parqueoId:pids[2]},
+    {placa:'TM-008-GT',tipo:'articulado',  lineaId:lids[4],capacidadMax:160,pasajerosActuales:280,estadoBus:'operativo',     parqueoId:pids[3]},
+    {placa:'TM-009-GT',tipo:'electrico',   lineaId:lids[2],capacidadMax:119,pasajerosActuales:80, estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-010-GT',tipo:'convencional',lineaId:lids[0],capacidadMax:119,pasajerosActuales:8,  estadoBus:'operativo',     parqueoId:pids[0]},
+    {placa:'TM-011-GT',tipo:'articulado',  lineaId:null,   capacidadMax:160,pasajerosActuales:0,  estadoBus:'mantenimiento', parqueoId:pids[2]},
+    {placa:'TM-012-GT',tipo:'convencional',lineaId:null,   capacidadMax:119,pasajerosActuales:0,  estadoBus:'fuera_servicio',parqueoId:pids[1]},
+  ],{allKeys:true});
+  const pils=await db.pilotos.bulkAdd([
+    {nombre:'Carlos Méndez López',    dpi:'1234567890101',telefono:'5544-3322',licencia:'GT-001122',tipoLicencia:'C',direccion:'Col. La Verbena, Zona 7', nivelEducativo:'diversificado',turno:'mañana',busId:bids[0], estadoLaboral:'activo'},
+    {nombre:'Ana García Pérez',       dpi:'9876543210101',telefono:'4433-2211',licencia:'GT-002233',tipoLicencia:'C',direccion:'Col. El Bosque, Zona 6', nivelEducativo:'universitario', turno:'mañana',busId:bids[1], estadoLaboral:'activo'},
+    {nombre:'Roberto Juárez Pellecer',dpi:'1122334455667',telefono:'3322-1100',licencia:'GT-003344',tipoLicencia:'C',direccion:'Villa Nueva, Km 14',      nivelEducativo:'diversificado',turno:'tarde', busId:bids[2], estadoLaboral:'activo'},
+    {nombre:'María José Solís',       dpi:'7788990011223',telefono:'5511-2233',licencia:'GT-004455',tipoLicencia:'C',direccion:'Mixco, Col. Monte María', nivelEducativo:'universitario', turno:'tarde', busId:bids[3], estadoLaboral:'activo'},
+    {nombre:'Héctor Lima Recinos',    dpi:'4455667788990',telefono:'4422-3344',licencia:'GT-005566',tipoLicencia:'C',direccion:'Zona 18, Col. Atlántida', nivelEducativo:'diversificado',turno:'noche', busId:bids[4], estadoLaboral:'activo'},
+    {nombre:'Patricia Orozco Valle',  dpi:'3344556677889',telefono:'3311-4455',licencia:'GT-006677',tipoLicencia:'B',direccion:'Zona 6, Col. La Pedrera', nivelEducativo:'diversificado',turno:'mañana',busId:bids[5], estadoLaboral:'activo'},
+    {nombre:'Luis Fernando Castillo', dpi:'2233445566778',telefono:'2200-3311',licencia:'GT-007788',tipoLicencia:'C',direccion:'Zona 12, Fin de Línea',   nivelEducativo:'diversificado',turno:'tarde', busId:bids[6], estadoLaboral:'activo'},
+    {nombre:'Sandra Pérez Godínez',   dpi:'6677889900112',telefono:'6655-7788',licencia:'GT-008899',tipoLicencia:'C',direccion:'Zona 5, Centro',          nivelEducativo:'universitario', turno:'noche', busId:null,    estadoLaboral:'inactivo'},
+  ],{allKeys:true});
+  const hoy=new Date().toISOString().split('T')[0];
+  await db.asignaciones.bulkAdd([
+    {lineaId:lids[5],busId:bids[0],pilotoId:pils[0],turno:'mañana',fecha:hoy,estado:'activa',    creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+    {lineaId:lids[5],busId:bids[1],pilotoId:pils[1],turno:'mañana',fecha:hoy,estado:'activa',    creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+    {lineaId:lids[6],busId:bids[3],pilotoId:pils[3],turno:'tarde', fecha:hoy,estado:'activa',    creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+    {lineaId:lids[8],busId:bids[5],pilotoId:pils[5],turno:'noche', fecha:hoy,estado:'completada',creadoPor:'despachador1',creadoEn:new Date().toISOString(),cambios:[]},
+  ]);
+  await db.desvios.bulkAdd([
+    {lineaId:lids[0],tipo:'desvio',motivo:'Procesión religiosa en Centro Histórico',estacionesAfectadas:'San Sebastián, Tipografía',horaInicio:new Date(Date.now()-7200000).toISOString(),duracionEstimada:'3 horas',estado:'activo',registradoPor:'supervisor1',registradoEn:new Date().toISOString()},
+    {lineaId:lids[4],tipo:'suspension_parcial',motivo:'Accidente en Anillo Periférico',estacionesAfectadas:'La Merced, USAC Periférico',horaInicio:new Date(Date.now()-86400000).toISOString(),duracionEstimada:'2 horas',estado:'finalizado',horaFin:new Date(Date.now()-79200000).toISOString(),observaciones:'Normalizado luego de retirar vehículo accidentado.',finalizadoPor:'supervisor1',registradoPor:'supervisor1',registradoEn:new Date().toISOString()},
+  ]);
+  await db.ausencias.bulkAdd([
+    {pilotoId:pils[7],turno:'noche',fecha:hoy,motivo:'Enfermedad',lineaId:lids[8],reemplazoId:null,registradoPor:'despachador1',atendida:0},
+  ]);
+  await db.incidencias.bulkAdd([
+    {tipo:'aglomeracion',lineaId:lids[5],estacionId:eids[0],severidad:'Alta',descripcion:'Aglomeración masiva en Plaza Barrios por evento en el Centro Histórico. Esperas mayores a 20 minutos.',horaInicio:new Date(Date.now()-3600000).toISOString(),estado:'activa',creadoPor:'supervisor1'},
+    {tipo:'falla_mecanica',lineaId:lids[4],estacionId:eids[11],severidad:'Media',descripcion:'Bus TM-008-GT reporta falla en sistema de puertas delanteras. Operando con restricción.',horaInicio:new Date(Date.now()-7200000).toISOString(),estado:'activa',creadoPor:'supervisor1'},
+    {tipo:'desvio',lineaId:lids[0],estacionId:eids[7],severidad:'Media',descripcion:'Desvío temporal en Línea 1 por procesión religiosa en Zona 1.',horaInicio:new Date(Date.now()-86400000).toISOString(),estado:'cerrada',accionTomada:'Ruta alterna establecida. Normalizado a las 6pm.',horaResolucion:new Date(Date.now()-72000000).toISOString(),cerradoPor:'supervisor1',creadoPor:'supervisor1'},
+  ]);
+  await db.alertas.bulkAdd([
+    {tipo:'capacidad_alta',descripcion:'Bus TM-008-GT supera el 50% de su capacidad (280/160 pax) en Línea 7.',nivel:'Alta',modulo:'Buses',hora:new Date(Date.now()-1800000).toISOString(),atendida:0},
+    {tipo:'incidencia_alta',descripcion:'Incidencia ALTA: Aglomeración masiva en Plaza Barrios.',nivel:'Alta',modulo:'Incidencias',hora:new Date(Date.now()-3600000).toISOString(),atendida:0},
+    {tipo:'ausencia_piloto',descripcion:'Piloto Sandra Pérez Godínez ausente (Enfermedad) en turno noche. Sin reemplazo asignado.',nivel:'Alta',modulo:'Ausencias',hora:new Date(Date.now()-7200000).toISOString(),atendida:0},
+    {tipo:'desvio',descripcion:'Desvío registrado en Línea 1 — Centro Histórico: Procesión religiosa.',nivel:'Media',modulo:'Desvíos',hora:new Date(Date.now()-7200000).toISOString(),atendida:0},
+    {tipo:'linea_estado',descripcion:'Línea 21 — Nimajuyú / Trébol cambió a estado: mantenimiento.',nivel:'Media',modulo:'Líneas',hora:new Date(Date.now()-10800000).toISOString(),atendida:0},
+  ]);
+}
+
+async function init(){await seedIfEmpty();await updateCounts();}
+init();
+
+// ============================================================
+// REPORTES (Módulo nuevo)
+// ============================================================
+function sepLine(char='-', len=70){ return char.repeat(len); }
+function fmt(label, value){ return label.padEnd(30, '.') + ' ' + (value||'N/A'); }
+</script>
+</body>
+</html>
